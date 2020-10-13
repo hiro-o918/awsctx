@@ -8,8 +8,6 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-pub mod list;
-
 #[derive(Debug)]
 pub struct AWS {
     credentials_path: PathBuf,
