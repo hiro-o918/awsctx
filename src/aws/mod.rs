@@ -4,8 +4,9 @@ use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use regex::Regex;
 use std::collections::HashMap;
+use std::fmt;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -16,6 +17,30 @@ pub struct AWS {
 pub struct Credentials {
     data: HashMap<String, Vec<String>>,
     current_key: Option<String>,
+}
+
+impl fmt::Display for Credentials {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for (profile, items) in self.data.iter() {
+            writeln!(fmt, "{}", profile)?;
+            for item in items.iter() {
+                writeln!(fmt, "{}", item)?;
+            }
+        }
+        match &self.current_key {
+            Some(k) => match self.data.get(k) {
+                Some(items) => {
+                    writeln!(fmt, "{}", DEFAULT_KEY)?;
+                    for item in items.iter() {
+                        writeln!(fmt, "{}", item)?;
+                    }
+                }
+                None => (),
+            },
+            None => (),
+        }
+        Ok(())
+    }
 }
 
 impl Default for AWS {
@@ -108,6 +133,8 @@ fn find_current_key(data: &HashMap<String, Vec<String>>) -> Option<String> {
                 return Some(k.to_string());
             }
         }
+        // no default key found but it does not match any other keys
+        // TODO: handle this as some error or add validation for credentials
         None
     } else {
         None
@@ -119,13 +146,34 @@ fn load_aws_credentials(credentials_path: &PathBuf) -> Result<Credentials, CTXME
         .map_err(|e| CTXMError::CannotReadConfiguration { source: e.into() })?;
 
     let reader = BufReader::new(file);
-    let data = parse_aws_credentials(reader)?;
+    let mut data = parse_aws_credentials(reader)?;
     let ck = find_current_key(&data);
+    // remove DEFAULT_KEY after retrain current key
+    data.remove(DEFAULT_KEY);
 
     Ok(Credentials {
         data: data,
         current_key: ck,
     })
+}
+
+fn validate_key(creds: &Credentials, name: &str) -> Result<(), CTXMError> {
+    if !creds.data.contains_key(name) {
+        return Err(CTXMError::InvalidArgument {
+            source: anyhow!(format!("invalid profile: {}", name)),
+        });
+    }
+    Ok(())
+}
+
+fn dump_credential(creds: &Credentials, credentials_path: &PathBuf) -> Result<(), CTXMError> {
+    let mut file =
+        fs::File::create(credentials_path).map_err(|e| CTXMError::IOError { source: e.into() })?;
+    file.write_all(creds.to_string().as_bytes())
+        .map_err(|e| CTXMError::IOError { source: e.into() })?;
+    file.flush()
+        .map_err(|e| CTXMError::IOError { source: e.into() })?;
+    Ok(())
 }
 
 impl CTXM for AWS {
@@ -150,5 +198,18 @@ impl CTXM for AWS {
             })
             .collect();
         Ok(profiles)
+    }
+    fn use_context(&self, name: &str) -> Result<String, CTXMError> {
+        let credentials_path = &self.credentials_path;
+        let creds = load_aws_credentials(&credentials_path)?;
+        let profile = format!("[{}]", name);
+        validate_key(&creds, &profile)?;
+
+        let creds = Credentials {
+            data: creds.data,
+            current_key: Some(profile.to_string()),
+        };
+        dump_credential(&creds, credentials_path)?;
+        Ok(format!("{} is activated", name))
     }
 }
