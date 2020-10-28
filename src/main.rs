@@ -14,7 +14,7 @@ fn main() {
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             App::new("use-context")
-                .about("controls testing features")
+                .about("Updates default context by a profile name")
                 .arg(
                     Arg::with_name("profile")
                         .short("p")
@@ -23,7 +23,7 @@ fn main() {
                         .required(true),
                 ),
         )
-        .subcommand(App::new("list-contexts").about("controls testing features"))
+        .subcommand(App::new("list-contexts").about("Lists profiles"))
         .get_matches();
 
     let aws = AWS::default();
