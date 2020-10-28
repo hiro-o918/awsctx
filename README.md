@@ -13,7 +13,7 @@ $ cp ./target/release/ctxm /usr/local/bin
 ```
 
 ## How to Use
-### Login AWS CLI
+### [Requirements] Login AWS Account
 Login an AWS account by some ways with specified profile name.
 Then, you get `~/.aws/credentials` like
 ```
