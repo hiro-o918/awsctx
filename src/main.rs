@@ -10,7 +10,7 @@ fn main() {
     let matches = App::new("Context Manager for CLIs")
         .version("0.0.1")
         .author("Hironori Yamamoto <mr.nikoru918@gmail.com>")
-        .about("Mange Contexts for CLIs")
+        .about("Manage Contexts for CLIs")
         .subcommand(
             App::new("use-context")
                 .about("Updates default context by a profile name")

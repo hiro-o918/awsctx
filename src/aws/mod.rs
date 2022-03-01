@@ -221,13 +221,12 @@ impl CTXM for AWS {
         let options = SkimOptionsBuilder::default()
             .height(Some("30%"))
             .multi(true)
-            .bind(vec!["Enter:accept"])
             .build()
             .unwrap();
         let contexts = contexts
             .iter()
             .map(|s| s.trim())
-            .collect::<Vec<_>>()
+            .collect::<Vec<&str>>()
             .join("\n");
 
         let item_reader = SkimItemReader::default();
