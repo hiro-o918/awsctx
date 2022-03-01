@@ -4,6 +4,7 @@ pub mod view;
 pub trait CTXM {
     fn list_contexts(&self) -> Result<Vec<String>, CTXMError>;
     fn use_context(&self, name: &str) -> Result<String, CTXMError>;
+    fn use_context_interactive(&self) -> ();
 }
 
 #[derive(Error, Debug)]
