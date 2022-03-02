@@ -185,7 +185,7 @@ impl CTXM for AWS {
         let creds = load_aws_credentials(&credentials_path)?;
         let data = creds.data;
         let current_key = creds.current_key;
-        let profiles: Vec<String> = data
+        let mut profiles: Vec<String> = data
             .keys()
             .filter_map(|k| {
                 if k == DEFAULT_KEY {
@@ -200,6 +200,7 @@ impl CTXM for AWS {
                 Some(format!("  {}", p))
             })
             .collect();
+        profiles.sort_by_key(|s| s.as_str().replace("*", " "));
         Ok(profiles)
     }
     fn use_context(&self, name: &str) -> Result<String, CTXMError> {
