@@ -218,7 +218,8 @@ impl CTXM for AWS {
     }
 
     fn use_context_interactive(&self) -> () {
-        let contexts = self.list_contexts().unwrap();
+        let mut contexts = self.list_contexts().unwrap();
+        contexts.reverse();
         let options = SkimOptionsBuilder::default()
             .height(Some("30%"))
             .multi(true)
