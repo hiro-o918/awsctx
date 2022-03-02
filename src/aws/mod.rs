@@ -222,7 +222,7 @@ impl CTXM for AWS {
         contexts.reverse();
         let options = SkimOptionsBuilder::default()
             .height(Some("30%"))
-            .multi(true)
+            .multi(false)
             .build()
             .unwrap();
         let contexts = contexts
