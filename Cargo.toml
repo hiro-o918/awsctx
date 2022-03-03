@@ -3,6 +3,8 @@ name = "awsctx"
 version = "0.2.0"
 authors = ["Hironoiri Yamamoto <mr.nikoru918@gmail.com>"]
 edition = "2018"
+description = "Context Manager for AWS Profiles"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
