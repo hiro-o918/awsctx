@@ -1,6 +1,6 @@
 [package]
 name = "awsctx"
-version = "0.2.0"
+version = "0.2.3"
 authors = ["Hironoiri Yamamoto <mr.nikoru918@gmail.com>"]
 edition = "2018"
 description = "Context Manager for AWS Profiles"
