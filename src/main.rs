@@ -1,42 +1,37 @@
-use crate::aws::AWS;
-use crate::ctxm::view::show_contexts;
-use crate::ctxm::CTXM;
-use clap::{App, Arg};
-
-mod aws;
-mod ctxm;
+use awsctx::{aws::AWS, ctx::CTX, view::show_contexts};
+use clap::{Arg, Command};
 
 fn main() {
-    let matches = App::new("Context Manager for CLIs")
-        .version("0.0.1")
+    let matches = Command::new("Context Manager for AWS Profiles")
+        .version("0.2.0")
         .author("Hironori Yamamoto <mr.nikoru918@gmail.com>")
-        .about("Manage Contexts for CLIs")
+        .about("Manage profiles in a credentials of AWS CLI")
         .subcommand(
-            App::new("use-context")
+            Command::new("use-context")
                 .about("Updates default context by a profile name")
                 .arg(
-                    Arg::with_name("profile")
-                        .short("p")
+                    Arg::new("profile")
+                        .short('p')
                         .takes_value(true)
                         .help("profile name")
                         .required(true),
                 ),
         )
-        .subcommand(App::new("list-contexts").about("Lists profiles"))
+        .subcommand(Command::new("list-contexts").about("Lists profiles in AWS CLI"))
         .get_matches();
 
     let aws = AWS::default();
     match matches.subcommand() {
-        ("use-context", Some(submatches)) => {
+        Some(("use-context", submatches)) => {
             let profile = submatches.value_of("profile").unwrap();
             aws.use_context(profile).unwrap();
         }
-        ("list-contexts", Some(_)) => {
+        Some(("list-contexts", _)) => {
             let contexts = aws.list_contexts().unwrap();
             show_contexts(&contexts);
         }
         _ => {
-            aws.use_context_interactive();
+            aws.use_context_interactive().unwrap();
         }
     }
 }
