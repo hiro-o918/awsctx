@@ -3,7 +3,7 @@ use clap::{Arg, Command};
 
 fn main() {
     let matches = Command::new("Context Manager for AWS Profiles")
-        .version("0.2.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .author("Hironori Yamamoto <mr.nikoru918@gmail.com>")
         .about("Manage profiles in a credentials of AWS CLI")
         .subcommand(

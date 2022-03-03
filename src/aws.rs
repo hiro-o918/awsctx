@@ -38,9 +38,7 @@ impl ctx::CTX for AWS {
 
     fn use_context(&self, name: &str) -> Result<ctx::Context, ctx::CTXError> {
         let mut creds = Credentials::load_credentials(&self.credentials_path)?;
-        println!("{:?}", creds);
         let profile = creds.set_default_profile(name)?;
-        println!("{:?}", creds);
         creds.dump_credential(&self.credentials_path)?;
         Ok(ctx::Context {
             name: profile.name,
