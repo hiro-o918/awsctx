@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::Path;
 
 const DEFAULT_PROFILE_KEY: &str = "[default]";
 
@@ -27,31 +27,25 @@ impl fmt::Display for Credentials {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // sort profiles by key
         let mut profiles = self.data.iter().collect::<Vec<(&String, &Vec<String>)>>();
-        profiles.sort_by(|a, b| a.0.cmp(&b.0));
+        profiles.sort_by(|a, b| a.0.cmp(b.0));
         for (profile, items) in profiles {
             writeln!(fmt, "{}", profile)?;
             for item in items.iter() {
                 writeln!(fmt, "{}", item)?;
             }
         }
-        match &self.current_key {
-            Some(k) => match self.data.get(k) {
-                Some(items) => {
-                    writeln!(fmt, "{}", DEFAULT_PROFILE_KEY)?;
-                    for item in items.iter() {
-                        writeln!(fmt, "{}", item)?;
-                    }
-                }
-                None => (),
-            },
-            None => (),
+        if let Some(items) = self.data.get(&self.current_key.clone().unwrap_or_default()) {
+            writeln!(fmt, "{}", DEFAULT_PROFILE_KEY)?;
+            for item in items.iter() {
+                writeln!(fmt, "{}", item)?;
+            }
         }
         Ok(())
     }
 }
 
 impl Credentials {
-    pub fn load_credentials(credentials_path: &PathBuf) -> Result<Self, ctx::CTXError> {
+    pub fn load_credentials(credentials_path: &Path) -> Result<Self, ctx::CTXError> {
         let file = fs::File::open(credentials_path)
             .map_err(|e| ctx::CTXError::CannotReadConfiguration { source: e.into() })?;
 
@@ -62,7 +56,7 @@ impl Credentials {
         data.remove(DEFAULT_PROFILE_KEY);
 
         Ok(Credentials {
-            data: data,
+            data,
             current_key: ck,
         })
     }
@@ -77,7 +71,7 @@ impl Credentials {
         Ok(Profile {
             name: name.into(),
             items: items.clone(),
-            default: Some(name) == self.current_key.as_ref().map(|x| x.as_str()),
+            default: Some(name) == self.current_key.as_deref(),
         })
     }
 
@@ -93,11 +87,11 @@ impl Credentials {
         Ok(Profile {
             name: name.into(),
             items: items.clone(),
-            default: Some(name) == self.current_key.as_ref().map(|x| x.as_str()),
+            default: Some(name) == self.current_key.as_deref(),
         })
     }
 
-    pub fn dump_credential(&self, credentials_path: &PathBuf) -> Result<(), ctx::CTXError> {
+    pub fn dump_credential(&self, credentials_path: &Path) -> Result<(), ctx::CTXError> {
         let mut file = fs::File::create(credentials_path)
             .map_err(|e| ctx::CTXError::IOError { source: e.into() })?;
         file.write_all(self.to_string().as_bytes())
@@ -119,7 +113,7 @@ impl Credentials {
             })
             .collect::<Vec<Profile>>();
         profiles.sort_by(|a, b| a.name.cmp(&b.name));
-        return profiles;
+        profiles
     }
 
     fn find_default_key_from_profiles(data: &HashMap<String, Vec<String>>) -> Option<String> {
@@ -150,7 +144,7 @@ fn parse_aws_credentials(
             profile_idxs.push(idx)
         }
     }
-    if profile_idxs.len() == 0 {
+    if profile_idxs.is_empty() {
         return Err(ctx::CTXError::ConfigurationIsBroken {
             source: anyhow!("empty credential"),
         });
@@ -161,8 +155,8 @@ fn parse_aws_credentials(
     let first_idx: usize;
     let latter_idxs: Vec<usize>;
     if let Some(first_and_latters) = profile_idxs.split_first() {
-        first_idx = first_and_latters.0.clone();
-        latter_idxs = first_and_latters.1.iter().cloned().collect();
+        first_idx = *first_and_latters.0;
+        latter_idxs = first_and_latters.1.to_vec();
     } else {
         return Err(ctx::CTXError::ConfigurationIsBroken {
             source: anyhow!("unexpected error"),
@@ -172,8 +166,8 @@ fn parse_aws_credentials(
     let end_idx: usize;
     let former_idxs: Vec<usize>;
     if let Some(end_and_formers) = profile_idxs.split_last() {
-        end_idx = end_and_formers.0.clone();
-        former_idxs = end_and_formers.1.iter().cloned().collect();
+        end_idx = *end_and_formers.0;
+        former_idxs = end_and_formers.1.to_vec();
     } else {
         return Err(ctx::CTXError::ConfigurationIsBroken {
             source: anyhow!("unexpected error"),
@@ -183,7 +177,7 @@ fn parse_aws_credentials(
     if first_idx == end_idx {
         let mut data: HashMap<String, Vec<String>> = HashMap::new();
         let profile = lines[first_idx].clone();
-        let items = lines[first_idx..].iter().cloned().collect();
+        let items = lines[first_idx..].to_vec();
 
         data.insert(profile, items);
         return Ok(data);
@@ -192,12 +186,12 @@ fn parse_aws_credentials(
     let mut data: HashMap<String, Vec<String>> = HashMap::new();
     for (former_idx, latter_idx) in former_idxs.iter().zip(latter_idxs) {
         let profile = lines[*former_idx].clone(); // trim redundant `[` and `]`
-        let items = lines[*former_idx + 1..latter_idx].iter().cloned().collect();
+        let items = lines[*former_idx + 1..latter_idx].to_vec();
         data.insert(profile, items);
     }
     {
         let profile = lines[end_idx].clone();
-        let items = lines[end_idx + 1..].iter().cloned().collect();
+        let items = lines[end_idx + 1..].to_vec();
         data.insert(profile, items);
     }
     Ok(data)
