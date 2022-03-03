@@ -1,20 +1,15 @@
-# ctxm
-Context manager for CLI tools
-
-## Support
-- [awscli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html)
+# awsctx
+Context manager for AWS Profiles
 
 ## Installation
-```console
-$ git clone https://github.com/hiro-o918/ctxm
-$ cd ctxm
-$ cargo build --release
-$ cp ./target/release/ctxm /usr/local/bin
-```
+<!-- TODO -->
 
-## How to Use
-### [Requirements] Login AWS Account
-Login an AWS account by some ways with specified profile name.
+## Demo
+[![asciicast](https://asciinema.org/a/5bpFGoV2AlptWM9lWvVaIieeQ.svg)](https://asciinema.org/a/5bpFGoV2AlptWM9lWvVaIieeQ)
+
+## How it Works
+### Login
+Authorize your shell by some ways with specified profile name.
 Then, you get `~/.aws/credentials` like
 ```
 [foo]
