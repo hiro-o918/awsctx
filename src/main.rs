@@ -1,7 +1,7 @@
 use crate::aws::AWS;
 use crate::ctxm::view::show_contexts;
 use crate::ctxm::CTXM;
-use clap::{App, AppSettings, Arg};
+use clap::{App, Arg};
 
 mod aws;
 mod ctxm;
@@ -10,8 +10,7 @@ fn main() {
     let matches = App::new("Context Manager for CLIs")
         .version("0.0.1")
         .author("Hironori Yamamoto <mr.nikoru918@gmail.com>")
-        .about("Mange Contexts for CLIs")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
+        .about("Manage Contexts for CLIs")
         .subcommand(
             App::new("use-context")
                 .about("Updates default context by a profile name")
@@ -36,6 +35,8 @@ fn main() {
             let contexts = aws.list_contexts().unwrap();
             show_contexts(&contexts);
         }
-        _ => (),
+        _ => {
+            aws.use_context_interactive();
+        }
     }
 }

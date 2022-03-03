@@ -3,9 +3,12 @@ use crate::ctxm::{CTXMError, CTXM};
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use regex::Regex;
+use skim::prelude::{SkimItemReader, SkimOptionsBuilder};
+use skim::Skim;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
+use std::io::Cursor;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
@@ -212,5 +215,31 @@ impl CTXM for AWS {
         };
         dump_credential(&creds, credentials_path)?;
         Ok(format!("{} is activated", name))
+    }
+
+    fn use_context_interactive(&self) -> () {
+        let mut contexts = self.list_contexts().unwrap();
+        contexts.reverse();
+        let options = SkimOptionsBuilder::default()
+            .height(Some("30%"))
+            .multi(false)
+            .build()
+            .unwrap();
+        let contexts = contexts
+            .iter()
+            .map(|s| s.trim())
+            .collect::<Vec<&str>>()
+            .join("\n");
+
+        let item_reader = SkimItemReader::default();
+        let items = item_reader.of_bufread(Cursor::new(contexts));
+        let selected = Skim::run_with(&options, Some(items))
+            .map(|out| out.selected_items)
+            .unwrap_or_else(|| Vec::new());
+
+        for item in selected.iter() {
+            let context = &(item.output()).replace("* ", "");
+            println!("{}", self.use_context(context).unwrap());
+        }
     }
 }
