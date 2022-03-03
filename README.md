@@ -1,4 +1,8 @@
 # awsctx
+![](https://github.com/hiro-o918/awsctx/workflows/lint/badge.svg?branch=main)
+![](https://img.shields.io/crates/v/awsctx)
+![](https://img.shields.io/github/v/release/hiro-o918/awsctx?sort=semver)
+
 Context manager for AWS Profiles
 
 ## Demo
