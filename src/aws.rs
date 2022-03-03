@@ -64,19 +64,18 @@ impl ctx::CTX for AWS {
 
         let selected_items = Skim::run_with(&options, Some(rx_item))
             .map(|out| out.selected_items)
-            .unwrap_or_else(|| Vec::new());
-        for item in selected_items.iter() {
-            let context = (*item)
-                .as_any()
-                .downcast_ref::<ctx::Context>()
-                .cloned()
-                .ok_or(ctx::CTXError::UnexpectedError {
-                    source: anyhow!("unexpected error"),
-                })?;
-            return self.use_context(&context.name);
-        }
-        Err(ctx::CTXError::InvalidArgument {
-            source: anyhow!("no context is selected"),
-        })
+            .unwrap_or_else(Vec::new);
+        let item = selected_items
+            .get(0)
+            .ok_or(ctx::CTXError::InvalidArgument {
+                source: anyhow!("no context is selected"),
+            })?;
+        (*item)
+            .as_any()
+            .downcast_ref::<ctx::Context>()
+            .cloned()
+            .ok_or(ctx::CTXError::UnexpectedError {
+                source: anyhow!("unexpected error"),
+            })
     }
 }
