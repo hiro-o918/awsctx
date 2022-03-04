@@ -14,6 +14,7 @@ const DEFAULT_PROFILE_KEY: &str = "[default]";
 pub struct Profile {
     pub name: String,
     pub default: bool,
+    #[allow(dead_code)]
     items: Vec<String>,
 }
 
