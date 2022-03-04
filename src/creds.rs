@@ -66,7 +66,7 @@ impl Credentials {
         let items =
             self.data
                 .get(&format!("[{}]", name))
-                .ok_or(ctx::CTXError::UnknownContextName {
+                .ok_or(ctx::CTXError::InvalidArgument {
                     source: anyhow!(format!("unknown context name: {}", name)),
                 })?;
         Ok(Profile {
@@ -78,12 +78,9 @@ impl Credentials {
 
     pub fn set_default_profile(&mut self, name: &str) -> Result<Profile, ctx::CTXError> {
         let key = name_to_profile_key(name);
-        let items = self
-            .data
-            .get(&key)
-            .ok_or(ctx::CTXError::UnknownContextName {
-                source: anyhow!(format!("unknown context name: {}", name)),
-            })?;
+        let items = self.data.get(&key).ok_or(ctx::CTXError::InvalidArgument {
+            source: anyhow!(format!("unknown context name: {}", name)),
+        })?;
         self.current_key = Some(key);
         Ok(Profile {
             name: name.into(),
@@ -97,11 +94,11 @@ impl Credentials {
         credentials_path: P,
     ) -> Result<(), ctx::CTXError> {
         let mut file = fs::File::create(credentials_path)
-            .map_err(|e| ctx::CTXError::IOError { source: e.into() })?;
+            .map_err(|e| ctx::CTXError::UnexpectedError { source: e.into() })?;
         file.write_all(self.to_string().as_bytes())
-            .map_err(|e| ctx::CTXError::IOError { source: e.into() })?;
+            .map_err(|e| ctx::CTXError::UnexpectedError { source: e.into() })?;
         file.flush()
-            .map_err(|e| ctx::CTXError::IOError { source: e.into() })?;
+            .map_err(|e| ctx::CTXError::UnexpectedError { source: e.into() })?;
         Ok(())
     }
 

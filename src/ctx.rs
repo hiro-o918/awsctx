@@ -17,10 +17,8 @@ pub enum CTXError {
     ConfigurationIsBroken { source: anyhow::Error },
     #[error("Invalid input")]
     InvalidArgument { source: anyhow::Error },
-    #[error("Unknown context name")]
-    UnknownContextName { source: anyhow::Error },
-    #[error("IOError")]
-    IOError { source: anyhow::Error },
+    #[error("No context is selected")]
+    NoContextIsSelected {},
     #[error("Unexpected error")]
     UnexpectedError { source: anyhow::Error },
 }
