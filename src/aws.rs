@@ -77,6 +77,6 @@ impl ctx::CTX for AWS {
             .ok_or(ctx::CTXError::UnexpectedError {
                 source: anyhow!("unexpected error"),
             })?;
-        return self.use_context(&context.name);
+        self.use_context(&context.name)
     }
 }
