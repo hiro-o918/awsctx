@@ -47,19 +47,11 @@ aws_secret_access_key = YYYYYYYYYYY
 aws_session_token = YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
 ```
 
-### List Profiles
-`list-contexts` shows all the named profiles as the below.
-```console
-$ ctxm list-contexts
-  foo
-  bar
-```
-
-### Use Context
+### Update the default profile by CLI
 `use-context` update `~/.aws/credentials` to contain `default` profile that the values are same as specified in the option.
 
 ```console
-$ ctxm use-context -p foo
+$ awsctx use-context -p foo
 ```
 e.g. the above commands updates credentials as the below.
 ```
