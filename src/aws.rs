@@ -54,10 +54,8 @@ impl ctx::CTX for AWS {
             .height(Some("30%"))
             .multi(false)
             .build()
-            .or_else(|err| {
-                Err(ctx::CTXError::UnexpectedError {
-                    source: anyhow!(err),
-                })
+            .map_err(|err| ctx::CTXError::UnexpectedError {
+                source: anyhow!(err),
             })?;
 
         let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
