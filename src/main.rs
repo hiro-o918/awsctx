@@ -1,37 +1,65 @@
+use std::io;
+
 use awsctx::{aws::AWS, ctx::CTX, view::show_contexts};
-use clap::{Arg, Command};
+
+use clap::{IntoApp, Parser, Subcommand};
+use clap_complete::{generate, Generator, Shell};
+
+#[derive(Parser)]
+#[clap(
+    name = "awsctx",
+    about = "Context Manager for AWS Profiles",
+    long_about = "Manage profiles in a credentials of AWS CLI",
+    version = env!("CARGO_PKG_VERSION"),
+)]
+struct Cli {
+    #[clap(subcommand)]
+    opts: Option<Opts>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Opts {
+    /// Updates a default profile by a profile name
+    #[clap(arg_required_else_help = true)]
+    UseContext {
+        #[clap(long, short, help = "profile name")]
+        profile: String,
+    },
+    /// Update a default profile by interactive finder
+    #[clap(skip = true)]
+    UseContextByInteractiveFinder {},
+    /// List all the contexts in the credentials
+    #[clap(arg_required_else_help = false)]
+    ListContexts {},
+    /// Generate completion script
+    Completion {
+        #[clap(long, short, arg_enum)]
+        shell: Shell,
+    },
+}
 
 fn main() {
-    let matches = Command::new("Context Manager for AWS Profiles")
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("Hironori Yamamoto <mr.nikoru918@gmail.com>")
-        .about("Manage profiles in a credentials of AWS CLI")
-        .subcommand(
-            Command::new("use-context")
-                .about("Updates default context by a profile name")
-                .arg(
-                    Arg::new("profile")
-                        .short('p')
-                        .takes_value(true)
-                        .help("profile name")
-                        .required(true),
-                ),
-        )
-        .subcommand(Command::new("list-contexts").about("Lists profiles in AWS CLI"))
-        .get_matches();
-
+    let cli = Cli::parse();
     let aws = AWS::default();
-    match matches.subcommand() {
-        Some(("use-context", submatches)) => {
-            let profile = submatches.value_of("profile").unwrap();
-            aws.use_context(profile).unwrap();
+    let opts = cli.opts.unwrap_or(Opts::UseContextByInteractiveFinder {});
+    match opts {
+        Opts::UseContext { profile } => {
+            aws.use_context(profile.as_str()).unwrap();
         }
-        Some(("list-contexts", _)) => {
-            let contexts = aws.list_contexts().unwrap();
-            show_contexts(&contexts);
-        }
-        _ => {
+        Opts::UseContextByInteractiveFinder {} => {
             aws.use_context_interactive().unwrap();
         }
+        Opts::ListContexts {} => {
+            let contexts = aws.list_contexts().unwrap();
+            show_contexts(&contexts)
+        }
+        Opts::Completion { shell } => {
+            print_completions(shell);
+        }
     }
+}
+
+fn print_completions<G: Generator>(gen: G) {
+    let cmd = &mut Cli::command();
+    generate(gen, cmd, cmd.get_name().to_string(), &mut io::stdout());
 }
