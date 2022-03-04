@@ -3,7 +3,7 @@ use crate::ctx;
 
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
-use skim::prelude::{unbounded, SkimOptionsBuilder};
+use skim::prelude::{unbounded, Key, SkimOptionsBuilder};
 use skim::{Skim, SkimItemReceiver, SkimItemSender};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -65,13 +65,14 @@ impl ctx::CTX for AWS {
         drop(tx_item);
 
         let selected_items = Skim::run_with(&options, Some(rx_item))
-            .map(|out| out.selected_items)
-            .unwrap_or_else(Vec::new);
+            .map(|out| match out.final_key {
+                Key::Enter => Ok(out.selected_items),
+                _ => Err(ctx::CTXError::NoContextIsSelected {}),
+            })
+            .unwrap_or(Ok(Vec::new()))?;
         let item = selected_items
             .get(0)
-            .ok_or(ctx::CTXError::InvalidArgument {
-                source: anyhow!("no context is selected"),
-            })?;
+            .ok_or(ctx::CTXError::NoContextIsSelected {})?;
         let context = (*item)
             .as_any()
             .downcast_ref::<ctx::Context>()
