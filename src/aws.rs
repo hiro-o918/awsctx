@@ -28,9 +28,9 @@ impl ctx::CTX for AWS {
         let creds = Credentials::load_credentials(&self.credentials_path)?;
         let profiles = creds.list_profiles();
         Ok(profiles
-            .iter()
+            .into_iter()
             .map(|p| ctx::Context {
-                name: p.name.clone(),
+                name: p.name,
                 active: p.default,
             })
             .collect())
@@ -47,14 +47,18 @@ impl ctx::CTX for AWS {
     }
 
     fn use_context_interactive(&self) -> Result<ctx::Context, ctx::CTXError> {
-        let mut contexts = self.list_contexts().unwrap();
+        let mut contexts = self.list_contexts()?;
         // skim shows reverse order
         contexts.reverse();
         let options = SkimOptionsBuilder::default()
             .height(Some("30%"))
             .multi(false)
             .build()
-            .unwrap();
+            .or_else(|err| {
+                Err(ctx::CTXError::UnexpectedError {
+                    source: anyhow!(err),
+                })
+            })?;
 
         let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
         for context in contexts {
