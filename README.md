@@ -31,6 +31,13 @@ $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
   && mv awsctx /usr/local/bin
 ```
 
+## Configure Completion
+```console
+$ awsctx completion --shell zsh > /path/to/completions/_awsctx
+```
+Please replace `/path/to` with a path in your environment.
+`bash`, `elvish` and `fish` are also available as a `--shell` option
+
 ## How it Works
 ### Login
 Authorize your shell by some ways with specified profile name.

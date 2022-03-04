@@ -46,7 +46,7 @@ impl fmt::Display for Credentials {
 }
 
 impl Credentials {
-    pub fn load_credentials(credentials_path: &Path) -> Result<Self, ctx::CTXError> {
+    pub fn load_credentials<P: AsRef<Path>>(credentials_path: P) -> Result<Self, ctx::CTXError> {
         let file = fs::File::open(credentials_path)
             .map_err(|e| ctx::CTXError::CannotReadConfiguration { source: e.into() })?;
 
@@ -92,7 +92,10 @@ impl Credentials {
         })
     }
 
-    pub fn dump_credential(&self, credentials_path: &Path) -> Result<(), ctx::CTXError> {
+    pub fn dump_credentials<P: AsRef<Path>>(
+        &self,
+        credentials_path: P,
+    ) -> Result<(), ctx::CTXError> {
         let mut file = fs::File::create(credentials_path)
             .map_err(|e| ctx::CTXError::IOError { source: e.into() })?;
         file.write_all(self.to_string().as_bytes())

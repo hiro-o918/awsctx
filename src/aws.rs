@@ -39,7 +39,7 @@ impl ctx::CTX for AWS {
     fn use_context(&self, name: &str) -> Result<ctx::Context, ctx::CTXError> {
         let mut creds = Credentials::load_credentials(&self.credentials_path)?;
         let profile = creds.set_default_profile(name)?;
-        creds.dump_credential(&self.credentials_path)?;
+        creds.dump_credentials(&self.credentials_path)?;
         Ok(ctx::Context {
             name: profile.name,
             active: profile.default,
@@ -54,10 +54,8 @@ impl ctx::CTX for AWS {
             .height(Some("30%"))
             .multi(false)
             .build()
-            .or_else(|err| {
-                Err(ctx::CTXError::UnexpectedError {
-                    source: anyhow!(err),
-                })
+            .map_err(|err| ctx::CTXError::UnexpectedError {
+                source: anyhow!(err),
             })?;
 
         let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
