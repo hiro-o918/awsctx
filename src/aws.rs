@@ -70,12 +70,13 @@ impl ctx::CTX for AWS {
             .ok_or(ctx::CTXError::InvalidArgument {
                 source: anyhow!("no context is selected"),
             })?;
-        (*item)
+        let context = (*item)
             .as_any()
             .downcast_ref::<ctx::Context>()
             .cloned()
             .ok_or(ctx::CTXError::UnexpectedError {
                 source: anyhow!("unexpected error"),
-            })
+            })?;
+        self.use_context(&context.name)
     }
 }
