@@ -11,7 +11,8 @@ license = "MIT"
 [dependencies]
 ansi_term = "0.12.1"
 anyhow = "1.0.55"
-clap = "3.1.5"
+clap = { version = "3.1.5", features = ["derive"] }
+clap_complete = "3.1.1"
 dirs = "4.0.0"
 regex = "1.5.4"
 skim = "0.9.4"
