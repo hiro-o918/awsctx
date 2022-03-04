@@ -1,6 +1,10 @@
 use std::io;
 
-use awsctx::{aws::AWS, ctx::CTX, view::show_contexts};
+use awsctx::{
+    aws::AWS,
+    ctx::{CTXError, CTX},
+    view::show_contexts,
+};
 
 use clap::{IntoApp, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
@@ -46,9 +50,15 @@ fn main() {
         Opts::UseContext { profile } => {
             aws.use_context(profile.as_str()).unwrap();
         }
-        Opts::UseContextByInteractiveFinder {} => {
-            aws.use_context_interactive().unwrap();
+        Opts::UseContextByInteractiveFinder {} => match aws.use_context_interactive() {
+            Ok(_) => Ok(()),
+            Err(err) => match err {
+                CTXError::NoContextIsSelected {} => Ok(()),
+                _ => Err(err),
+            },
         }
+        .unwrap(),
+
         Opts::ListContexts {} => {
             let contexts = aws.list_contexts().unwrap();
             show_contexts(&contexts)
