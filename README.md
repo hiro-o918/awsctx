@@ -17,6 +17,7 @@ $ brew install awsctx
 
 ### CLI
 **NOTE: [jq](https://github.com/stedolan/jq) required**
+
 :arrow_down: Download a binary and move to `/usr/local/bin`
 
 #### macOS
@@ -29,7 +30,6 @@ $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
 ```
 
 #### Linux
-:arrow_down: Download a binary and move to `/usr/local/bin`
 ```console
 $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
   | jq -r '.assets[] | select(.name | test("^awsctx_v[0-9]+\\.[0-9]+\\.[0-9]+_x86_64-unknown-linux-musl\\.tar\\.gz$")) | .browser_download_url' \
