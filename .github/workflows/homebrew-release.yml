@@ -1,0 +1,36 @@
+name: homebrew-release
+on:
+  workflow_run:
+    workflows:
+      - release
+    tags:
+      - '*'
+    types:
+      - completed
+env:
+  USER_NAME: hiro-o918
+  REPO_NAME: awsctx
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - id: get_repository_name
+        run: echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
+        shell: bash
+      - name: Extract version
+        id: extract-version
+        run: |
+          printf "::set-output name=%s::%s\n" TAG-NAME "${GITHUB_REF#refs/tags/}"
+      - uses: mislav/bump-homebrew-formula-action@v1
+        if: "!contains(github.ref, '-')"
+        with:
+          formula-name: ${{ env.REPO_NAME }}
+          formula-path: Formula/${{ env.REPO_NAME }}.rb
+          homebrew-tap: ${{ env.USER_NAME }}/homebrew-tap
+          base-branch: main
+          tag-name: ${{ steps.extract-version.outputs.TAG-NAME }}
+          download-url: https://github.com/${{ env.USER_NAME }}/${{ env.REPO_NAME }}/releases/download/${{ steps.extract-version.outputs.TAG-NAME }}/awsctx_${{ steps.extract-version.outputs.TAG-NAME }}_x86_64-apple-darwin.tar.gz
+
+        env:
+          COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
