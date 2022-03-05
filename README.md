@@ -9,10 +9,17 @@ Context manager for AWS Profiles
 [![asciicast](https://asciinema.org/a/5bpFGoV2AlptWM9lWvVaIieeQ.svg)](https://asciinema.org/a/5bpFGoV2AlptWM9lWvVaIieeQ)
 
 ## Installation
-**NOTE: [jq](https://github.com/stedolan/jq) required**
+### Homebrew (macOS only)
+```console
+$ brew tap hiro-o918/homebrew-tap
+$ brew install awsctx
+```
 
-### macOS
+### CLI
+**NOTE: [jq](https://github.com/stedolan/jq) required**
 :arrow_down: Download a binary and move to `/usr/local/bin`
+
+#### macOS
 ```console
 $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
   | jq -r '.assets[] | select(.name | test("^awsctx_v[0-9]+\\.[0-9]+\\.[0-9]+_x86_64-apple-darwin\\.tar\\.gz$")) | .browser_download_url' \
@@ -21,7 +28,7 @@ $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
   && mv awsctx /usr/local/bin
 ```
 
-### Linux
+#### Linux
 :arrow_down: Download a binary and move to `/usr/local/bin`
 ```console
 $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
@@ -31,7 +38,7 @@ $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
   && mv awsctx /usr/local/bin
 ```
 
-## Configure Completion
+### Configure Completion
 ```console
 $ awsctx completion --shell zsh > /path/to/completions/_awsctx
 ```
