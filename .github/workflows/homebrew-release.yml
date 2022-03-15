@@ -5,7 +5,12 @@ on:
       - release
     types:
       - completed
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        required: false
+        description: tag version to release
 
 env:
   USER_NAME: hiro-o918
@@ -15,16 +20,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - id: get_repository_name
-        run: |
-          echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
-        shell: bash
-      - name: Extract version
+      - name: extract version
         id: extract-version
         run: |
-          printf "::set-output name=%s::%s\n" TAG-NAME "$(git tag | sort -V | tail -1)"
+          if [[ "${{  github.event.inputs.tag }}" != "" ]]
+          then
+            printf "::set-output name=TAG-NAME::${{  github.event.inputs.tag }}\n"
+          else
+            printf "::set-output name=%s::%s\n" TAG-NAME "${GITHUB_REF#refs/tags/}"
+          fi
       - uses: mislav/bump-homebrew-formula-action@v1
-        if: "!contains(github.ref, '-')"
         with:
           formula-name: ${{ env.REPO_NAME }}
           formula-path: Formula/${{ env.REPO_NAME }}.rb
