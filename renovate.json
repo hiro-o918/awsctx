@@ -1,5 +1,17 @@
 {
   "extends": [
     "config:base"
+  ],
+  "packageRules": [
+    {
+      "groupName": "Cargo Dependencies",
+      "matchDatasources": [
+        "crate"
+      ],
+      "separateMinorPatch": true,
+      "patch": {
+        "automerge": true
+      }
+    }
   ]
 }
