@@ -16,13 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: get_repository_name
-        run: |
-          echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
+        run: echo ::set-output name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
         shell: bash
       - name: Extract version
         id: extract-version
         run: |
-          printf "::set-output name=%s::%s\n" TAG-NAME "$(git tag | sort -V | tail -1)"
+          printf "::set-output name=%s::%s\n" TAG-NAME "${GITHUB_REF#refs/tags/}"
       - uses: mislav/bump-homebrew-formula-action@v1
         if: "!contains(github.ref, '-')"
         with:
