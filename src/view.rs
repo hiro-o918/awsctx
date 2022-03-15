@@ -10,3 +10,11 @@ pub fn show_contexts(contexts: &[ctx::Context]) {
         }
     }
 }
+
+pub fn show_active_context(contexts: &[ctx::Context]) {
+    for c in contexts.iter() {
+        if c.active {
+            println!("{}", c.name)
+        }
+    }
+}

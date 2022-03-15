@@ -3,7 +3,7 @@ use std::io;
 use awsctx::{
     aws::AWS,
     ctx::{CTXError, CTX},
-    view::show_contexts,
+    view::{show_active_context, show_contexts},
 };
 
 use clap::{IntoApp, Parser, Subcommand};
@@ -35,6 +35,9 @@ enum Opts {
     /// List all the contexts in the credentials
     #[clap(arg_required_else_help = false)]
     ListContexts {},
+    /// Show active context in the credentials
+    #[clap(arg_required_else_help = false)]
+    ActiveContext {},
     /// Generate completion script
     Completion {
         #[clap(long, short, arg_enum)]
@@ -62,6 +65,10 @@ fn main() {
         Opts::ListContexts {} => {
             let contexts = aws.list_contexts().unwrap();
             show_contexts(&contexts)
+        }
+        Opts::ActiveContext {} => {
+            let contexts = aws.list_contexts().unwrap();
+            show_active_context(&contexts)
         }
         Opts::Completion { shell } => {
             print_completions(shell);
