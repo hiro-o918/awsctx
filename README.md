@@ -3,10 +3,12 @@
 ![](https://img.shields.io/crates/v/awsctx)
 ![](https://img.shields.io/github/v/release/hiro-o918/awsctx?sort=semver)
 
-Context manager for AWS Profiles
+Context manager for AWS profiles with a fuzzy finder
 
 ## Demo
-[![asciicast](https://asciinema.org/a/5bpFGoV2AlptWM9lWvVaIieeQ.svg)](https://asciinema.org/a/5bpFGoV2AlptWM9lWvVaIieeQ)
+<div align="center">
+  <img src="./misc/demo.gif" alt="demo" width="80%" />
+</div>
 
 ## Installation
 ### Homebrew (macOS only)
