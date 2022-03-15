@@ -3,10 +3,10 @@ on:
   workflow_run:
     workflows:
       - release
-    tags:
-      - '*'
     types:
       - completed
+  workflow_dispatch: {}
+
 env:
   USER_NAME: hiro-o918
   REPO_NAME: awsctx
