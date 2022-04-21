@@ -10,7 +10,7 @@ license = "MIT"
 
 [dependencies]
 ansi_term = "0.12.1"
-anyhow = "1.0.56"
+anyhow = "1.0.57"
 clap = { version = "3.1.10", features = ["derive"] }
 clap_complete = "3.1.2"
 dirs = "4.0.0"
