@@ -27,7 +27,7 @@ enum Opts {
     /// Show active context in the credentials.
     #[clap(arg_required_else_help = false)]
     ActiveContext {},
-    /// Auth awscli with the specified profile.
+    /// Auth awscli with the specified profile by pre-defined scripts, then make it active.
     /// This function requires the configuration set up for the specified profile before use.
     #[clap(arg_required_else_help = true)]
     Auth {
@@ -37,6 +37,10 @@ enum Opts {
     /// List all the contexts in the credentials.
     #[clap(arg_required_else_help = false)]
     ListContexts {},
+    /// Auth awscli for the active profile by pre-defined scripts
+    /// This function requires the configuration set up for the specified profile before use.
+    #[clap(arg_required_else_help = false)]
+    Refresh {},
     /// Updates a default profile by a profile name.
     #[clap(arg_required_else_help = true)]
     UseContext {
@@ -77,11 +81,15 @@ fn main() {
         Opts::UseContextByInteractiveFinder {} => match aws.use_context_interactive() {
             Ok(_) => Ok(()),
             Err(err) => match err {
-                CTXError::NoContextIsSelected {} => Ok(()),
+                CTXError::NoContextIsSelected { source: _ } => Ok(()),
                 _ => Err(err),
             },
         }
         .unwrap(),
+        Opts::Refresh {} => {
+            let active_context = aws.get_active_context().unwrap();
+            aws.auth(active_context.name.as_str()).unwrap();
+        }
 
         Opts::Completion { shell } => {
             print_completions(shell);

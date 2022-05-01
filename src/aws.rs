@@ -81,6 +81,24 @@ impl ctx::CTX for AWS<'_> {
             .collect())
     }
 
+    fn get_active_context(&self) -> Result<ctx::Context, ctx::CTXError> {
+        let creds = Credentials::load_credentials(&self.credentials_path)?;
+        let default_profile = creds
+            .list_profiles()
+            .into_iter()
+            .filter(|p| p.default)
+            .next();
+
+        default_profile
+            .and_then(|p| {
+                Some(ctx::Context {
+                    name: p.name,
+                    active: p.default,
+                })
+            })
+            .ok_or_else(|| ctx::CTXError::NoActiveContext { source: None })
+    }
+
     fn use_context(&self, name: &str) -> Result<ctx::Context, ctx::CTXError> {
         let mut creds = Credentials::load_credentials(&self.credentials_path)?;
         let profile = creds.set_default_profile(name)?;
