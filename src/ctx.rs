@@ -6,29 +6,32 @@ use thiserror::Error;
 pub trait CTX {
     fn auth(&self, profile: &str) -> Result<Context, CTXError>;
     fn list_contexts(&self) -> Result<Vec<Context>, CTXError>;
+    fn get_active_context(&self) -> Result<Context, CTXError>;
     fn use_context(&self, profile: &str) -> Result<Context, CTXError>;
     fn use_context_interactive(&self) -> Result<Context, CTXError>;
 }
 
 #[derive(Error, Debug)]
 pub enum CTXError {
-    #[error("No auth configuration found for the profile")]
-    NoAuthConfiguration { profile: String },
+    #[error("Cannot read configuration")]
+    CannotReadCredentials { source: Option<anyhow::Error> },
+    #[error("Configuration is broken")]
+    CredentialsIsBroken { source: Option<anyhow::Error> },
+    #[error("Invalid input")]
+    InvalidArgument { source: Option<anyhow::Error> },
     #[error("Invalid configurations")]
     InvalidConfigurations {
         message: String,
-        source: anyhow::Error,
+        source: Option<anyhow::Error>,
     },
-    #[error("Cannot read configuration")]
-    CannotReadCredentials { source: anyhow::Error },
-    #[error("Configuration is broken")]
-    CredentialsIsBroken { source: anyhow::Error },
-    #[error("Invalid input")]
-    InvalidArgument { source: anyhow::Error },
+    #[error("No active context found")]
+    NoActiveContext { source: Option<anyhow::Error> },
+    #[error("No auth configuration found for the profile")]
+    NoAuthConfiguration { profile: String },
     #[error("No context is selected")]
-    NoContextIsSelected {},
+    NoContextIsSelected { source: Option<anyhow::Error> },
     #[error("Unexpected error")]
-    UnexpectedError { source: anyhow::Error },
+    UnexpectedError { source: Option<anyhow::Error> },
 }
 
 #[derive(Default, Clone, Debug)]

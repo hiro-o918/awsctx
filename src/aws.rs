@@ -51,7 +51,7 @@ impl ctx::CTX for AWS<'_> {
             .render_template(script_template, &json!({ "profile": profile }))
             .map_err(|e| ctx::CTXError::InvalidConfigurations {
                 message: format!("failed to render script of profile {}", profile),
-                source: anyhow!("failed to render script {}", e),
+                source: Some(anyhow!("failed to render script {}", e)),
             })?;
 
         let status = Command::new("sh")
@@ -59,11 +59,11 @@ impl ctx::CTX for AWS<'_> {
             .arg(script)
             .status()
             .map_err(|e| ctx::CTXError::UnexpectedError {
-                source: anyhow!("failed to execute an auth script: {}", e),
+                source: Some(anyhow!("failed to execute an auth script: {}", e)),
             })?;
         if !status.success() {
             return Err(ctx::CTXError::UnexpectedError {
-                source: anyhow!("failed to run auth script, check output logs"),
+                source: Some(anyhow!("failed to run auth script, check output logs")),
             });
         }
         self.use_context(profile)
@@ -79,6 +79,18 @@ impl ctx::CTX for AWS<'_> {
                 active: p.default,
             })
             .collect())
+    }
+
+    fn get_active_context(&self) -> Result<ctx::Context, ctx::CTXError> {
+        let creds = Credentials::load_credentials(&self.credentials_path)?;
+        let default_profile = creds.list_profiles().into_iter().find(|p| p.default);
+
+        default_profile
+            .map(|p| ctx::Context {
+                name: p.name,
+                active: p.default,
+            })
+            .ok_or(ctx::CTXError::NoActiveContext { source: None })
     }
 
     fn use_context(&self, name: &str) -> Result<ctx::Context, ctx::CTXError> {
@@ -100,7 +112,7 @@ impl ctx::CTX for AWS<'_> {
             .multi(false)
             .build()
             .map_err(|err| ctx::CTXError::UnexpectedError {
-                source: anyhow!(err),
+                source: Some(anyhow!(err)),
             })?;
 
         let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
@@ -112,18 +124,18 @@ impl ctx::CTX for AWS<'_> {
         let selected_items = Skim::run_with(&options, Some(rx_item))
             .map(|out| match out.final_key {
                 Key::Enter => Ok(out.selected_items),
-                _ => Err(ctx::CTXError::NoContextIsSelected {}),
+                _ => Err(ctx::CTXError::NoContextIsSelected { source: None }),
             })
             .unwrap_or(Ok(Vec::new()))?;
         let item = selected_items
             .get(0)
-            .ok_or(ctx::CTXError::NoContextIsSelected {})?;
+            .ok_or(ctx::CTXError::NoContextIsSelected { source: None })?;
         let context = (*item)
             .as_any()
             .downcast_ref::<ctx::Context>()
             .cloned()
             .ok_or(ctx::CTXError::UnexpectedError {
-                source: anyhow!("unexpected error"),
+                source: Some(anyhow!("unexpected error")),
             })?;
         self.use_context(&context.name)
     }
