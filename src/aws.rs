@@ -1,29 +1,74 @@
+use crate::configs::Configs;
 use crate::creds::Credentials;
 use crate::ctx;
 
-use anyhow::{anyhow, Result};
 use dirs::home_dir;
-use skim::prelude::{unbounded, Key, SkimOptionsBuilder};
-use skim::{Skim, SkimItemReceiver, SkimItemSender};
 use std::path::PathBuf;
+use std::process::Command;
+use std::rc::Rc;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
+use handlebars::Handlebars;
+use once_cell::sync::Lazy;
+use serde_json::json;
+use skim::prelude::{unbounded, Key, SkimOptionsBuilder};
+use skim::{Skim, SkimItemReceiver, SkimItemSender};
+
+static CREDENTIALS_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let mut path = home_dir().unwrap();
+    path.push(".aws/credentials");
+    path
+});
+
 #[derive(Debug)]
-pub struct AWS {
+pub struct AWS<'a> {
+    configs: Rc<Configs>,
     credentials_path: PathBuf,
+    reg: Handlebars<'a>,
 }
 
-impl Default for AWS {
-    fn default() -> Self {
-        let mut path = home_dir().unwrap();
-        path.push(".aws/credentials");
-        Self {
-            credentials_path: path,
-        }
+impl AWS<'_> {
+    pub fn new(configs: Rc<Configs>) -> Result<Self> {
+        Ok(Self {
+            configs,
+            credentials_path: CREDENTIALS_PATH.clone(),
+            reg: Handlebars::new(),
+        })
     }
 }
 
-impl ctx::CTX for AWS {
+impl ctx::CTX for AWS<'_> {
+    fn auth(&self, profile: &str) -> Result<ctx::Context, ctx::CTXError> {
+        let script_template = self.configs.auth_commands.get(profile).ok_or_else(|| {
+            ctx::CTXError::NoAuthConfiguration {
+                profile: profile.to_string(),
+            }
+        })?;
+
+        let script = self
+            .reg
+            .render_template(script_template, &json!({ "profile": profile }))
+            .map_err(|e| ctx::CTXError::InvalidConfigurations {
+                message: format!("failed to render script of profile {}", profile),
+                source: anyhow!("failed to render script {}", e),
+            })?;
+
+        let status = Command::new("sh")
+            .arg("-c")
+            .arg(script)
+            .status()
+            .map_err(|e| ctx::CTXError::UnexpectedError {
+                source: anyhow!("failed to execute an auth script: {}", e),
+            })?;
+        if !status.success() {
+            return Err(ctx::CTXError::UnexpectedError {
+                source: anyhow!("failed to run auth script, check output logs"),
+            });
+        }
+        self.use_context(profile)
+    }
+
     fn list_contexts(&self) -> Result<Vec<ctx::Context>, ctx::CTXError> {
         let creds = Credentials::load_credentials(&self.credentials_path)?;
         let profiles = creds.list_profiles();
