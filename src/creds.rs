@@ -66,7 +66,8 @@ impl Credentials {
 
     pub fn get_profile(&self, name: &str) -> Result<Profile, ctx::CTXError> {
         let key = name_to_profile_key(name);
-        let items = self.data.get(&key).ok_or(ctx::CTXError::InvalidArgument {
+        let items = self.data.get(&key).ok_or(ctx::CTXError::NoSuchProfile {
+            profile: name.to_string(),
             source: Some(anyhow!(format!("unknown context name: {}", name))),
         })?;
         Ok(Profile {
@@ -78,7 +79,8 @@ impl Credentials {
 
     pub fn set_default_profile(&mut self, name: &str) -> Result<Profile, ctx::CTXError> {
         let key = name_to_profile_key(name);
-        let items = self.data.get(&key).ok_or(ctx::CTXError::InvalidArgument {
+        let items = self.data.get(&key).ok_or(ctx::CTXError::NoSuchProfile {
+            profile: name.to_string(),
             source: Some(anyhow!(format!("unknown context name: {}", name))),
         })?;
         self.current_key = Some(key);
