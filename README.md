@@ -10,6 +10,41 @@ Context manager for AWS profiles with a fuzzy finder
   <img src="./misc/demo.gif" alt="demo" width="80%" />
 </div>
 
+## Usage
+`help` command shows usage of each command.
+
+```console
+$ awsctx --help
+USAGE:
+    awsctx [OPTIONS] [SUBCOMMAND]
+
+OPTIONS:
+    -h, --help
+            Print help information
+
+    -v, --verbose
+            Enable verbose output
+
+    -V, --version
+            Print version information
+
+SUBCOMMANDS:
+    active-context
+            Show active context in the credentials
+    auth
+            Auth awscli with the specified profile by pre-defined scripts, then make it active
+    completion
+            Generate completion script
+    help
+            Print this message or the help of the given subcommand(s)
+    list-contexts
+            List all the contexts in the credentials
+    refresh
+            Auth awscli for the active profile by pre-defined scripts
+    use-context
+            Updates a default profile by a profile name
+```
+
 ## Installation
 ### Homebrew (macOS only)
 ```console
