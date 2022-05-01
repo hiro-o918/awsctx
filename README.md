@@ -40,12 +40,39 @@ $ curl -s https://api.github.com/repos/hiro-o918/awsctx/releases/latest \
   && mv awsctx /usr/local/bin
 ```
 
+## Configurations
+### configs.yaml
+`awsctx` refers to configurations in `~/.awsctx/configs.yaml`.
+If you run `awsctx` once, configuration file is generated, or you can manually create new one to `~/.awsctx/configs.yaml`
+
+The following is usage and an example of `configs.yaml`
+```yaml
+# Configurations for awsctx 
+# You can manually edit configurations according to the following usage
+
+# To use subcommand `auth` or `refresh`, fill the below configs for each profile.
+auth_commands: 
+  # configuration for `foo` profile with aws configure
+  foo: |
+    # you can use pre-defined parameter `{{profile}}` which is replaced by key of this block
+    # In this case, `{{profile}}` is replaced by `foo`
+    aws configure --profile {{profile}}
+  # configuration for `bar` profile with [onelogin-aws-cli](https://github.com/physera/onelogin-aws-cli)
+  bar: |
+    # In this case, name of one-login configuration is same as `profile`
+    onelogin-aws-login -C {{profile}} --profile {{profile}} -u user@example.com
+```
+
 ### Configure Completion
+To enable completion, run the below command.
+If you install `awsctx` by homebrew, this operation is not required
+
 ```console
 $ awsctx completion --shell zsh > /path/to/completions/_awsctx
 ```
 Please replace `/path/to` with a path in your environment.
 `bash`, `elvish` and `fish` are also available as a `--shell` option
+
 
 ## How it Works
 ### Login

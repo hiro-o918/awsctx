@@ -43,6 +43,7 @@ impl ctx::CTX for AWS<'_> {
         let script_template = self.configs.auth_commands.get(profile).ok_or_else(|| {
             ctx::CTXError::NoAuthConfiguration {
                 profile: profile.to_string(),
+                source: None,
             }
         })?;
 

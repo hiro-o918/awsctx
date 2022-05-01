@@ -17,8 +17,6 @@ pub enum CTXError {
     CannotReadCredentials { source: Option<anyhow::Error> },
     #[error("Configuration is broken")]
     CredentialsIsBroken { source: Option<anyhow::Error> },
-    #[error("Invalid input")]
-    InvalidArgument { source: Option<anyhow::Error> },
     #[error("Invalid configurations")]
     InvalidConfigurations {
         message: String,
@@ -27,9 +25,17 @@ pub enum CTXError {
     #[error("No active context found")]
     NoActiveContext { source: Option<anyhow::Error> },
     #[error("No auth configuration found for the profile")]
-    NoAuthConfiguration { profile: String },
+    NoAuthConfiguration {
+        profile: String,
+        source: Option<anyhow::Error>,
+    },
     #[error("No context is selected")]
     NoContextIsSelected { source: Option<anyhow::Error> },
+    #[error("No such profile")]
+    NoSuchProfile {
+        profile: String,
+        source: Option<anyhow::Error>,
+    },
     #[error("Unexpected error")]
     UnexpectedError { source: Option<anyhow::Error> },
 }
