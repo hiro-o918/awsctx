@@ -22,7 +22,7 @@ pub fn fatal_ctxerr<T>(result: Result<T, ctx::CTXError>) -> T {
                 error!("<red>invalid configurations: {}</>", message);
                 error!("");
                 error!("modify ~/.awsctx/configs.yaml manually and try again");
-                error!("<bold>Example Usage</>: <u>https://github.com/hiro-o918/awsctx/tree/v{}#configs.yaml</>", env!("CARGO_PKG_VERSION"));
+                error!("<bold>Example Usage</>: <u>https://github.com/hiro-o918/awsctx/tree/v{}#configsyaml</>", env!("CARGO_PKG_VERSION"));
                 if let Some(source) = source {
                     debug!("caused error: {:?}", source);
                 }
@@ -42,7 +42,7 @@ pub fn fatal_ctxerr<T>(result: Result<T, ctx::CTXError>) -> T {
                 );
                 error!("");
                 error!("modify ~/.awsctx/configs.yaml manually and try again");
-                error!("<bold>Example Usage</>: <u>https://github.com/hiro-o918/awsctx/tree/v{}#configs.yaml</>", env!("CARGO_PKG_VERSION"));
+                error!("<bold>Example Usage</>: <u>https://github.com/hiro-o918/awsctx/tree/v{}#configsyaml</>", env!("CARGO_PKG_VERSION"));
                 if let Some(source) = source {
                     debug!("caused error: {:?}", source);
                 }
