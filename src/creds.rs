@@ -48,7 +48,7 @@ impl fmt::Display for Credentials {
 impl Credentials {
     pub fn load_credentials<P: AsRef<Path>>(credentials_path: P) -> Result<Self, ctx::CTXError> {
         let file = fs::File::open(credentials_path)
-            .map_err(|e| ctx::CTXError::CannotReadConfiguration { source: e.into() })?;
+            .map_err(|e| ctx::CTXError::CannotReadCredentials { source: e.into() })?;
 
         let reader = BufReader::new(file);
         let mut data = parse_aws_credentials(reader)?;
@@ -63,16 +63,14 @@ impl Credentials {
     }
 
     pub fn get_profile(&self, name: &str) -> Result<Profile, ctx::CTXError> {
-        let items =
-            self.data
-                .get(&format!("[{}]", name))
-                .ok_or(ctx::CTXError::InvalidArgument {
-                    source: anyhow!(format!("unknown context name: {}", name)),
-                })?;
+        let key = name_to_profile_key(name);
+        let items = self.data.get(&key).ok_or(ctx::CTXError::InvalidArgument {
+            source: anyhow!(format!("unknown context name: {}", name)),
+        })?;
         Ok(Profile {
             name: name.into(),
             items: items.clone(),
-            default: Some(name) == self.current_key.as_deref(),
+            default: Some(key) == self.current_key,
         })
     }
 
@@ -85,7 +83,7 @@ impl Credentials {
         Ok(Profile {
             name: name.into(),
             items: items.clone(),
-            default: Some(name) == self.current_key.as_deref(),
+            default: true,
         })
     }
 
@@ -139,14 +137,14 @@ fn parse_aws_credentials(
     let mut profile_idxs: Vec<usize> = Vec::new();
     let mut lines: Vec<String> = Vec::new();
     for (idx, line) in reader.lines().enumerate() {
-        let line = line.map_err(|e| ctx::CTXError::CannotReadConfiguration { source: e.into() })?;
+        let line = line.map_err(|e| ctx::CTXError::CannotReadCredentials { source: e.into() })?;
         lines.push(line.clone());
         if re_profile.is_match(&line) {
             profile_idxs.push(idx)
         }
     }
     if profile_idxs.is_empty() {
-        return Err(ctx::CTXError::ConfigurationIsBroken {
+        return Err(ctx::CTXError::CredentialsIsBroken {
             source: anyhow!("empty credential"),
         });
     }
@@ -159,7 +157,7 @@ fn parse_aws_credentials(
         first_idx = *first_and_latters.0;
         latter_idxs = first_and_latters.1.to_vec();
     } else {
-        return Err(ctx::CTXError::ConfigurationIsBroken {
+        return Err(ctx::CTXError::CredentialsIsBroken {
             source: anyhow!("unexpected error"),
         });
     }
@@ -170,7 +168,7 @@ fn parse_aws_credentials(
         end_idx = *end_and_formers.0;
         former_idxs = end_and_formers.1.to_vec();
     } else {
-        return Err(ctx::CTXError::ConfigurationIsBroken {
+        return Err(ctx::CTXError::CredentialsIsBroken {
             source: anyhow!("unexpected error"),
         });
     }
