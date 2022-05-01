@@ -12,9 +12,9 @@ pub trait CTX {
 #[derive(Error, Debug)]
 pub enum CTXError {
     #[error("Cannot read configuration")]
-    CannotReadConfiguration { source: anyhow::Error },
+    CannotReadCredentials { source: anyhow::Error },
     #[error("Configuration is broken")]
-    ConfigurationIsBroken { source: anyhow::Error },
+    CredentialsIsBroken { source: anyhow::Error },
     #[error("Invalid input")]
     InvalidArgument { source: anyhow::Error },
     #[error("No context is selected")]
