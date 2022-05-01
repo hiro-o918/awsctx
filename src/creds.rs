@@ -47,8 +47,10 @@ impl fmt::Display for Credentials {
 
 impl Credentials {
     pub fn load_credentials<P: AsRef<Path>>(credentials_path: P) -> Result<Self, ctx::CTXError> {
-        let file = fs::File::open(credentials_path)
-            .map_err(|e| ctx::CTXError::CannotReadCredentials { source: e.into() })?;
+        let file =
+            fs::File::open(credentials_path).map_err(|e| ctx::CTXError::CannotReadCredentials {
+                source: Some(e.into()),
+            })?;
 
         let reader = BufReader::new(file);
         let mut data = parse_aws_credentials(reader)?;
@@ -65,7 +67,7 @@ impl Credentials {
     pub fn get_profile(&self, name: &str) -> Result<Profile, ctx::CTXError> {
         let key = name_to_profile_key(name);
         let items = self.data.get(&key).ok_or(ctx::CTXError::InvalidArgument {
-            source: anyhow!(format!("unknown context name: {}", name)),
+            source: Some(anyhow!(format!("unknown context name: {}", name))),
         })?;
         Ok(Profile {
             name: name.into(),
@@ -77,7 +79,7 @@ impl Credentials {
     pub fn set_default_profile(&mut self, name: &str) -> Result<Profile, ctx::CTXError> {
         let key = name_to_profile_key(name);
         let items = self.data.get(&key).ok_or(ctx::CTXError::InvalidArgument {
-            source: anyhow!(format!("unknown context name: {}", name)),
+            source: Some(anyhow!(format!("unknown context name: {}", name))),
         })?;
         self.current_key = Some(key);
         Ok(Profile {
@@ -91,12 +93,18 @@ impl Credentials {
         &self,
         credentials_path: P,
     ) -> Result<(), ctx::CTXError> {
-        let mut file = fs::File::create(credentials_path)
-            .map_err(|e| ctx::CTXError::UnexpectedError { source: e.into() })?;
-        file.write_all(self.to_string().as_bytes())
-            .map_err(|e| ctx::CTXError::UnexpectedError { source: e.into() })?;
-        file.flush()
-            .map_err(|e| ctx::CTXError::UnexpectedError { source: e.into() })?;
+        let mut file =
+            fs::File::create(credentials_path).map_err(|e| ctx::CTXError::UnexpectedError {
+                source: Some(e.into()),
+            })?;
+        file.write_all(self.to_string().as_bytes()).map_err(|e| {
+            ctx::CTXError::UnexpectedError {
+                source: Some(e.into()),
+            }
+        })?;
+        file.flush().map_err(|e| ctx::CTXError::UnexpectedError {
+            source: Some(e.into()),
+        })?;
         Ok(())
     }
 
@@ -137,7 +145,9 @@ fn parse_aws_credentials(
     let mut profile_idxs: Vec<usize> = Vec::new();
     let mut lines: Vec<String> = Vec::new();
     for (idx, line) in reader.lines().enumerate() {
-        let line = line.map_err(|e| ctx::CTXError::CannotReadCredentials { source: e.into() })?;
+        let line = line.map_err(|e| ctx::CTXError::CannotReadCredentials {
+            source: Some(e.into()),
+        })?;
         lines.push(line.clone());
         if re_profile.is_match(&line) {
             profile_idxs.push(idx)
@@ -145,7 +155,7 @@ fn parse_aws_credentials(
     }
     if profile_idxs.is_empty() {
         return Err(ctx::CTXError::CredentialsIsBroken {
-            source: anyhow!("empty credential"),
+            source: Some(anyhow!("empty credential")),
         });
     }
     let lines = lines;
@@ -158,7 +168,7 @@ fn parse_aws_credentials(
         latter_idxs = first_and_latters.1.to_vec();
     } else {
         return Err(ctx::CTXError::CredentialsIsBroken {
-            source: anyhow!("unexpected error"),
+            source: Some(anyhow!("broken credentials")),
         });
     }
 
@@ -169,7 +179,7 @@ fn parse_aws_credentials(
         former_idxs = end_and_formers.1.to_vec();
     } else {
         return Err(ctx::CTXError::CredentialsIsBroken {
-            source: anyhow!("unexpected error"),
+            source: Some(anyhow!("broken credentials")),
         });
     }
 
