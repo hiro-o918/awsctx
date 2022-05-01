@@ -1,19 +1,26 @@
 [package]
+authors = ["Hironori Yamamoto <mr.nikoru918@gmail.com>"]
+description = "Context Manager for AWS Profiles"
+edition = "2018"
+license = "MIT"
 name = "awsctx"
 version = "0.3.1"
-authors = ["Hironori Yamamoto <mr.nikoru918@gmail.com>"]
-edition = "2018"
-description = "Context Manager for AWS Profiles"
-license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ansi_term = "0.12.1"
 anyhow = "1.0.57"
-clap = { version = "3.1.10", features = ["derive"] }
+clap = {version = "3.1.10", features = ["derive"]}
 clap_complete = "3.1.2"
+config = "0.13.1"
 dirs = "4.0.0"
+handlebars = "4.2.2"
+once_cell = "1.10.0"
 regex = "1.5.5"
+serde = {version = "1.0.137", features = ["derive"]}
+serde_derive = "1.0.137"
+serde_json = "1.0.79"
+serde_yaml = "0.8.23"
 skim = "0.9.4"
 thiserror = "1.0.30"
