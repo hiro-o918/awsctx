@@ -102,6 +102,14 @@ impl Credentials {
         })
     }
 
+    pub fn get_default_profile(&self) -> Result<Profile, ctx::CTXError> {
+        let name = self
+            .default_profile_name
+            .as_ref()
+            .ok_or(ctx::CTXError::NoActiveContext { source: None })?;
+        self.get_profile(name)
+    }
+
     pub fn set_default_profile(&mut self, name: &str) -> Result<Profile, ctx::CTXError> {
         let items = self.data.get(name).ok_or(ctx::CTXError::NoSuchProfile {
             profile: name.to_string(),
@@ -467,7 +475,7 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         let actual = credentials.get_profile(name);
         match (expect, actual) {
             (Ok(expect), Ok(actual)) => assert_eq!(expect, actual),
-            (Err(expect), Err(actual)) => match (expect, actual) {
+            (Err(expect), Err(actual)) => match (&expect, &actual) {
                 (
                     ctx::CTXError::NoSuchProfile {
                         profile: expect_profile,
@@ -480,7 +488,45 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                 ) => {
                     assert_eq!(expect_profile, actual_profile);
                 }
-                _ => panic!("unexpected error"),
+                _ => panic!("unexpected error: {}", actual),
+            },
+            _ => panic!("expect and actual are not match"),
+        }
+    }
+
+    #[rstest(::trace)]
+    #[case(
+        credentials(),
+        Ok(Profile {
+            name: "foo".to_string(), 
+            default: true,
+            items: vec![
+                ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
+                ("aws_secret_access_key".to_string(), "XXXXXXXXXXX".to_string()),
+                ("aws_session_token".to_string(), "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string()),
+            ]
+            .into_iter()
+            .collect::<HashMap<String, String>>()
+        })
+    )]
+    #[case(credentials_without_default(), Err(ctx::CTXError::NoActiveContext { source: None }))]
+    fn test_credentials_get_default_profile(
+        #[case] credentials: Credentials,
+        #[case] expect: Result<Profile, ctx::CTXError>,
+    ) {
+        let actual = credentials.get_default_profile();
+        match (expect, actual) {
+            (Ok(expect), Ok(actual)) => assert_eq!(expect, actual),
+            (Err(expect), Err(actual)) => match (&expect, &actual) {
+                (
+                    ctx::CTXError::NoActiveContext {
+                        source: _expect_source,
+                    },
+                    ctx::CTXError::NoActiveContext {
+                        source: _actual_source,
+                    },
+                ) => (),
+                _ => panic!("unexpected error: {}", actual),
             },
             _ => panic!("expect and actual are not match"),
         }
@@ -531,7 +577,7 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                 // check default profile is updated
                 assert_eq!(Some(name.to_string()), credentials.default_profile_name);
             }
-            (Err(expect), Err(actual)) => match (expect, actual) {
+            (Err(expect), Err(actual)) => match (&expect, &actual) {
                 (
                     ctx::CTXError::NoSuchProfile {
                         profile: expect_profile,
@@ -544,7 +590,7 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                 ) => {
                     assert_eq!(expect_profile, actual_profile);
                 }
-                _ => panic!("unexpected error"),
+                _ => panic!("unexpected error: {}", actual),
             },
             _ => panic!("expect and actual are not match"),
         }

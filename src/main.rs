@@ -1,7 +1,7 @@
 use std::{io, rc::Rc};
 
 use awsctx::{
-    aws::AWS,
+    aws::{AWS, CREDENTIALS_PATH},
     configs::Configs,
     ctx::{CTXError, CTX},
     view::{fatal_ctxerr, show_context, show_contexts},
@@ -10,6 +10,7 @@ use awsctx::{
 use clap::{IntoApp, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use simplelog as sl;
+use skim::prelude::SkimOptionsBuilder;
 
 #[derive(Parser)]
 #[clap(
@@ -89,8 +90,14 @@ fn main() {
     .unwrap();
 
     let configs = Rc::new(fatal_ctxerr(Configs::initialize_default_configs()));
-    let aws = AWS::new(Rc::clone(&configs)).unwrap();
+    let aws = AWS::new(Rc::clone(&configs), CREDENTIALS_PATH.clone()).unwrap();
     let opts = cli.opts.unwrap_or(Opts::UseContextByInteractiveFinder {});
+    let skim_options = SkimOptionsBuilder::default()
+        .height(Some("30%"))
+        .multi(false)
+        .build()
+        .unwrap();
+
     match opts {
         Opts::ActiveContext {} => {
             let context = fatal_ctxerr(aws.get_active_context());
@@ -112,16 +119,13 @@ fn main() {
             sl::info!("<green>switch to profile ({})</>", context.name);
         }
         Opts::UseContextByInteractiveFinder {} => {
-            let context = match aws.use_context_interactive() {
-                Ok(context) => Some(context),
+            match aws.use_context_interactive(skim_options) {
+                Ok(context) => sl::info!("<green>switch to profile ({})</>", context.name),
                 Err(err) => match err {
-                    CTXError::NoContextIsSelected { source: _ } => None,
+                    CTXError::NoContextIsSelected { source: _ } => (),
                     _ => fatal_ctxerr(Err(err)),
                 },
             };
-            if let Some(context) = context {
-                sl::info!("<green>switch to profile ({})</>", context.name);
-            }
         }
         Opts::Refresh {} => {
             let active_context = fatal_ctxerr(aws.get_active_context());
