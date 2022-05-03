@@ -15,6 +15,8 @@ pub trait CTX {
 pub enum CTXError {
     #[error("Cannot read configuration")]
     CannotReadCredentials { source: Option<anyhow::Error> },
+    #[error("Cannot write configuration")]
+    CannotWriteCredentials { source: Option<anyhow::Error> },
     #[error("Configuration is broken")]
     CredentialsIsBroken { source: Option<anyhow::Error> },
     #[error("Invalid configurations")]

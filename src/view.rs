@@ -11,6 +11,13 @@ pub fn fatal_ctxerr<T>(result: Result<T, ctx::CTXError>) -> T {
                 }
                 std::process::exit(1);
             }
+            ctx::CTXError::CannotWriteCredentials { source } => {
+                error!("<red>failed to write credentials to ~/.aws/credentials file</>");
+                if let Some(source) = source {
+                    debug!("caused error: {:?}", source);
+                }
+                std::process::exit(1);
+            }
             ctx::CTXError::CredentialsIsBroken { source } => {
                 error!("<red>broken credentials, check your ~/.aws/credentials file</>");
                 if let Some(source) = source {
