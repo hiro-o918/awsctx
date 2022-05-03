@@ -1,4 +1,4 @@
-use std::{io, rc::Rc};
+use std::{io, path::PathBuf, rc::Rc};
 
 use awsctx::{
     aws::{AWS, CREDENTIALS_PATH},
@@ -89,7 +89,9 @@ fn main() {
     )
     .unwrap();
 
-    let configs = Rc::new(fatal_ctxerr(Configs::initialize_default_configs()));
+    let configs = Rc::new(fatal_ctxerr(
+        Configs::initialize_default_configs::<PathBuf>(None),
+    ));
     let aws = AWS::new(Rc::clone(&configs), CREDENTIALS_PATH.clone()).unwrap();
     let opts = cli.opts.unwrap_or(Opts::UseContextByInteractiveFinder {});
     let skim_options = SkimOptionsBuilder::default()
