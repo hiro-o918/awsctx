@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use skim::SkimItem;
+use skim::{SkimItem, SkimOptions};
 use thiserror::Error;
 
 pub trait CTX {
@@ -8,7 +8,7 @@ pub trait CTX {
     fn list_contexts(&self) -> Result<Vec<Context>, CTXError>;
     fn get_active_context(&self) -> Result<Context, CTXError>;
     fn use_context(&self, profile: &str) -> Result<Context, CTXError>;
-    fn use_context_interactive(&self) -> Result<Context, CTXError>;
+    fn use_context_interactive(&self, skim_options: SkimOptions) -> Result<Context, CTXError>;
 }
 
 #[derive(Error, Debug)]
@@ -42,7 +42,7 @@ pub enum CTXError {
     UnexpectedError { source: Option<anyhow::Error> },
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct Context {
     pub name: String,
     pub active: bool,
