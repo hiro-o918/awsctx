@@ -2,6 +2,7 @@
 ![](https://github.com/hiro-o918/awsctx/workflows/lint/badge.svg?branch=main)
 ![](https://img.shields.io/crates/v/awsctx)
 ![](https://img.shields.io/github/v/release/hiro-o918/awsctx?sort=semver)
+[![codecov](https://codecov.io/gh/hiro-o918/awsctx/branch/main/graph/badge.svg?token=TNNLDEJQYJ)](https://codecov.io/gh/hiro-o918/awsctx)
 
 Context manager for AWS profiles with a fuzzy finder
 
@@ -82,11 +83,11 @@ If you run `awsctx` once, configuration file is generated, or you can manually c
 
 The following is usage and an example of `configs.yaml`
 ```yaml
-# Configurations for awsctx 
+# Configurations for awsctx
 # You can manually edit configurations according to the following usage
 
 # To use subcommand `auth` or `refresh`, fill the below configs for each profile.
-auth_commands: 
+auth_commands:
   # configuration for `foo` profile with aws configure
   foo: |
     # you can use pre-defined parameter `{{profile}}` which is replaced by key of this block
