@@ -7,7 +7,6 @@ use tempfile::NamedTempFile;
 mod common;
 use common::*;
 
-
 #[rstest(input, expect)]
 #[case(
     "foo",
@@ -15,9 +14,9 @@ use common::*;
 )]
 #[case(
     "bar",
-    Err(ctx::CTXError::InvalidConfigurations { 
-        message: "failed to execute an auth script of profile (bar), check configurations".to_string(), 
-        source: None 
+    Err(ctx::CTXError::InvalidConfigurations {
+        message: "failed to execute an auth script of profile (bar), check configurations".to_string(),
+        source: None
     }),
 )]
 #[case(
@@ -39,23 +38,23 @@ fn test_aws_auth(
         }
         (Err(expect), Err(actual)) => match (&expect, &actual) {
             (
-                ctx::CTXError::InvalidConfigurations{
+                ctx::CTXError::InvalidConfigurations {
                     message: expect_message,
                     source: _expect_source,
                 },
-                ctx::CTXError::InvalidConfigurations{
+                ctx::CTXError::InvalidConfigurations {
                     message: actual_message,
                     source: _actual_source,
                 },
             ) => {
                 assert_eq!(expect_message, actual_message);
-            },
+            }
             (
-                ctx::CTXError::NoAuthConfiguration{
+                ctx::CTXError::NoAuthConfiguration {
                     profile: expect_profile,
                     source: _expect_source,
                 },
-                ctx::CTXError::NoAuthConfiguration{
+                ctx::CTXError::NoAuthConfiguration {
                     profile: actual_profile,
                     source: _actual_source,
                 },
@@ -86,7 +85,7 @@ fn test_aws_list_contexts(
 
 #[rstest(aws_credentials, expect)]
 #[case(
-    aws_credentials(aws_credentials_text()), 
+    aws_credentials(aws_credentials_text()),
     Ok(ctx::Context {name: "foo".to_string(),active: true,}),
 )]
 #[case(
@@ -100,21 +99,20 @@ fn test_aws_get_active_context(
 ) {
     let aws: &dyn ctx::CTX = &AWS::new(configs, aws_credentials.path()).unwrap();
     let actual = aws.get_active_context();
-     match (expect, actual) {
-            (Ok(expect), Ok(actual)) => {
-                assert_eq!(expect, actual);
-            }
-            (Err(expect), Err(actual)) => match (expect, actual) {
-                (
-                    ctx::CTXError::NoActiveContext { source: _ },
-                    ctx::CTXError::NoActiveContext { source: _ },
-                ) => (),
-                _ => panic!("unexpected error"),
-            },
-            _ => panic!("expect and actual are not match"),
+    match (expect, actual) {
+        (Ok(expect), Ok(actual)) => {
+            assert_eq!(expect, actual);
         }
+        (Err(expect), Err(actual)) => match (expect, actual) {
+            (
+                ctx::CTXError::NoActiveContext { source: _ },
+                ctx::CTXError::NoActiveContext { source: _ },
+            ) => (),
+            _ => panic!("unexpected error"),
+        },
+        _ => panic!("expect and actual are not match"),
+    }
 }
-
 
 #[rstest(input, expect)]
 #[case(
@@ -134,25 +132,25 @@ fn test_aws_use_context(
     let aws: &dyn ctx::CTX = &AWS::new(configs, aws_credentials.path()).unwrap();
     let actual = aws.use_context(input);
     match (expect, actual) {
-            (Ok(expect), Ok(actual)) => {
-                assert_eq!(expect, actual);
-                assert_eq!(expect, aws.get_active_context().unwrap())
-            }
-            (Err(expect), Err(actual)) => match (&expect, &actual) {
-                (
-                    ctx::CTXError::NoSuchProfile {
-                        profile: expect_profile,
-                        source: _expect_source,
-                    },
-                    ctx::CTXError::NoSuchProfile {
-                        profile: actual_profile,
-                        source: _actual_source,
-                    },
-                ) => {
-                    assert_eq!(expect_profile, actual_profile);
-                }
-                _ => panic!("unexpected error: {}", actual),
-            },
-            _ => panic!("expect and actual are not match"),
+        (Ok(expect), Ok(actual)) => {
+            assert_eq!(expect, actual);
+            assert_eq!(expect, aws.get_active_context().unwrap())
         }
+        (Err(expect), Err(actual)) => match (&expect, &actual) {
+            (
+                ctx::CTXError::NoSuchProfile {
+                    profile: expect_profile,
+                    source: _expect_source,
+                },
+                ctx::CTXError::NoSuchProfile {
+                    profile: actual_profile,
+                    source: _actual_source,
+                },
+            ) => {
+                assert_eq!(expect_profile, actual_profile);
+            }
+            _ => panic!("unexpected error: {}", actual),
+        },
+        _ => panic!("expect and actual are not match"),
+    }
 }
