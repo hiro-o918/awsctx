@@ -1,9 +1,9 @@
 use std::{
-    collections::HashMap,
     io::{Seek, SeekFrom, Write},
     rc::Rc,
 };
 
+use maplit::hashmap;
 use rstest::*;
 use tempfile::NamedTempFile;
 
@@ -11,7 +11,12 @@ use awsctx::{configs::Configs, creds::Credentials, ctx};
 
 #[fixture]
 pub fn aws_credentials_text() -> String {
-    r#"[bar]
+    r#"[baz]
+aws_access_key_id=ZZZZZZZZZZZ
+aws_secret_access_key=ZZZZZZZZZZZ
+aws_session_token=ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ
+
+[bar]
 aws_access_key_id=YYYYYYYYYYY
 aws_secret_access_key=YYYYYYYYYYY
 aws_session_token=YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
@@ -71,6 +76,10 @@ pub fn contexts() -> Vec<ctx::Context> {
             active: false,
         },
         ctx::Context {
+            name: "baz".to_string(),
+            active: false,
+        },
+        ctx::Context {
             name: "foo".to_string(),
             active: true,
         },
@@ -94,11 +103,20 @@ pub fn contexts_without_default() -> Vec<ctx::Context> {
 #[fixture]
 pub fn configs() -> Rc<Configs> {
     Rc::new(Configs {
-        auth_commands: vec![
-            ("foo".to_string(), "echo auth".to_string()),
-            ("bar".to_string(), "exit 1".to_string()),
-        ]
-        .into_iter()
-        .collect::<HashMap<String, String>>(),
+        auth_commands: hashmap! {
+           "foo".to_string() => "echo auth".to_string(),
+              "bar".to_string() => "exit 1".to_string(),
+              Configs::DEFAULT_AUTH_COMMAND_KEY.to_string() => "echo default auth".to_string(),
+        },
+    })
+}
+
+#[fixture]
+pub fn configs_without_default() -> Rc<Configs> {
+    Rc::new(Configs {
+        auth_commands: hashmap! {
+           "foo".to_string() => "echo auth".to_string(),
+              "bar".to_string() => "exit 1".to_string(),
+        },
     })
 }

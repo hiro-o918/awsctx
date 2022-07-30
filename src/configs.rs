@@ -1,10 +1,11 @@
 use dirs::home_dir;
+use maplit::hashmap;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use config::{Config, File, FileFormat};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,27 @@ pub static CONFIGS_PATH: Lazy<PathBuf> = Lazy::new(|| {
     path.push(".awsctx/configs.yaml");
     path
 });
-const CONFIGS_DESCRIPTIONS: &str = r#"# # Configurations for awsctx
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Configs {
+    pub auth_commands: HashMap<ProfileName, AuthScript>,
+}
+
+impl Default for Configs {
+    fn default() -> Self {
+        Self {
+            auth_commands: hashmap! {
+            Self::DEFAULT_AUTH_COMMAND_KEY.to_string()  => r#"echo "This is default configuration for auth commands."
+echo "You can edit this configuration on ~/.awsctx/configs.yaml according to your needs."
+aws configure --profile {{profile}}
+"#.to_string(),
+                },
+        }
+    }
+}
+
+impl Configs {
+    const CONFIGS_DESCRIPTIONS: &'static str = r#"# # Configurations for awsctx
 # # You can manually edit configurations according to the following usage
 
 # # To use subcommand `auth` or `refresh`, fill the below configs for each profile.
@@ -33,14 +54,13 @@ const CONFIGS_DESCRIPTIONS: &str = r#"# # Configurations for awsctx
 #   bar: |
 #     # In this case, name of one-login configuration is same as `profile`
 #     onelogin-aws-login -C {{profile}} --profile {{profile}} -u user@example.com
+#   # default configuration for profiles without auth configuration
+#   __default: |
+#     aws configure --profile {{profile}}
 "#;
 
-#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
-pub struct Configs {
-    pub auth_commands: HashMap<ProfileName, AuthScript>,
-}
+    pub const DEFAULT_AUTH_COMMAND_KEY: &'static str = "__default";
 
-impl Configs {
     pub fn load_configs<P: AsRef<Path>>(path: Option<P>) -> Result<Self, ctx::CTXError> {
         let path = path
             .map(|p| p.as_ref().to_path_buf())
@@ -80,22 +100,29 @@ impl Configs {
             return Self::load_configs(Some(path));
         }
         // if the config directory does not exist, create the directory recursively
-        match path.parent() {
-            Some(parent) => fs::create_dir_all(parent)
-                .context("failed to create a directory of a configuration file")
-                .map_err(|e| ctx::CTXError::UnexpectedError { source: Some(e) })?,
-            None => (),
-        }
+        path.parent()
+            .map_or_else(
+                || {
+                    Err(anyhow!(
+                        "no parent directory found for config path: {}",
+                        path.to_str().unwrap()
+                    ))
+                },
+                |parent| fs::create_dir_all(parent).context("failed to create config directory"),
+            )
+            .map_err(|e| ctx::CTXError::UnexpectedError { source: Some(e) })?;
+
         let c = Configs::default();
         let mut file = fs::File::create(&path)
             .context("failed to create a configuration file")
             .map_err(|e| ctx::CTXError::UnexpectedError { source: Some(e) })?;
-        file.write_all(CONFIGS_DESCRIPTIONS.as_bytes())
+        file.write_all(Self::CONFIGS_DESCRIPTIONS.as_bytes())
             .context("failed to write a configuration file")
             .map_err(|e| ctx::CTXError::UnexpectedError { source: Some(e) })?;
+
         let mut ser = serde_yaml::Serializer::new(&mut file);
         c.serialize(&mut ser)
-            .context("failed to write a configuration file")
+            .context("failed to serialize configuration")
             .map_err(|e| ctx::CTXError::UnexpectedError { source: Some(e) })?;
         file.flush()
             .context("failed to flush a configuration file")
@@ -116,25 +143,10 @@ mod tests {
 
     #[fixture]
     pub fn configs_text() -> String {
-        r#"# # Configurations for awsctx
-# # You can manually edit configurations according to the following usage
-
-# # To use subcommand `auth` or `refresh`, fill the below configs for each profile.
-# auth_commands:
-#   # configuration for `foo` profile with aws configure
-#   foo: |
-#     # you can use pre-defined parameter `{{profile}}` which is replaced by key of this block
-#     # In this case, `{{profile}}` is replaced by `foo`
-#     aws configure --profile {{profile}}
-#   # configuration for `bar` profile with [onelogin-aws-cli](https://github.com/physera/onelogin-aws-cli)
-#   bar: |
-#     # In this case, name of one-login configuration is same as `profile`
-#     onelogin-aws-login -C {{profile}} --profile {{profile}} -u user@example.com
----
-auth_commands:
+        r#"auth_commands:
   foo: |
     echo 1"#
-        .to_string()
+            .to_string()
     }
 
     #[fixture]
@@ -217,7 +229,14 @@ auth_commands:
 #   bar: |
 #     # In this case, name of one-login configuration is same as `profile`
 #     onelogin-aws-login -C {{profile}} --profile {{profile}} -u user@example.com
-auth_commands: {}
+#   # default configuration for profiles without auth configuration
+#   __default: |
+#     aws configure --profile {{profile}}
+auth_commands:
+  __default: |
+    echo "This is default configuration for auth commands."
+    echo "You can edit this configuration on ~/.awsctx/configs.yaml according to your needs."
+    aws configure --profile {{profile}}
 "#;
         let actual = fs::read_to_string(tmpfile).unwrap();
         assert_eq!(expect, actual);
