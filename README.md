@@ -97,6 +97,9 @@ auth_commands:
   bar: |
     # In this case, name of one-login configuration is same as `profile`
     onelogin-aws-login -C {{profile}} --profile {{profile}} -u user@example.com
+  # default configuration for profiles without auth configuration
+  __default: |
+    aws configure --profile {{profile}}
 ```
 
 ### Configure Completion

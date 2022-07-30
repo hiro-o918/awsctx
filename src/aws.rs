@@ -40,13 +40,20 @@ impl<P: AsRef<Path>> AWS<'_, P> {
 
 impl<P: AsRef<Path>> ctx::CTX for AWS<'_, P> {
     fn auth(&self, profile: &str) -> Result<ctx::Context, ctx::CTXError> {
-        let script_template = self.configs.auth_commands.get(profile).ok_or_else(|| {
-            ctx::CTXError::NoAuthConfiguration {
+        let script_template = self
+            .configs
+            .auth_commands
+            .get(profile)
+            // fallback to default configuration if a commend for the profile is not found
+            .or_else(|| {
+                self.configs
+                    .auth_commands
+                    .get(Configs::DEFAULT_AUTH_COMMAND_KEY)
+            })
+            .ok_or_else(|| ctx::CTXError::NoAuthConfiguration {
                 profile: profile.to_string(),
                 source: None,
-            }
-        })?;
-
+            })?;
         let script = self
             .reg
             .render_template(script_template, &json!({ "profile": profile }))

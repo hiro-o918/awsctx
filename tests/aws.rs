@@ -7,21 +7,31 @@ use tempfile::NamedTempFile;
 mod common;
 use common::*;
 
-#[rstest(input, expect)]
+#[rstest(configs, input, expect)]
 #[case(
+    configs(),
     "foo",
     Ok(ctx::Context {name: "foo".to_string(), active: true}),
 )]
 #[case(
+    configs(),
     "bar",
     Err(ctx::CTXError::InvalidConfigurations {
         message: "failed to execute an auth script of profile (bar), check configurations".to_string(),
         source: None
     }),
 )]
+//  baz is not defined in configs.auth_commands and default is set
 #[case(
-    "unknown",
-    Err(ctx::CTXError::NoAuthConfiguration{ profile: "unknown".to_string(), source: None }),
+    configs(),
+    "baz",
+    Ok(ctx::Context {name: "baz".to_string(), active: true}),
+)]
+//  baz is not defined in configs.auth_commands and default is not set
+#[case(
+    configs_without_default(),
+    "baz",
+    Err(ctx::CTXError::NoAuthConfiguration{ profile: "baz".to_string(), source: None }),
 )]
 fn test_aws_auth(
     configs: Rc<Configs>,
@@ -31,10 +41,10 @@ fn test_aws_auth(
 ) {
     let aws: &dyn ctx::CTX = &AWS::new(configs, aws_credentials.path()).unwrap();
     let actual = aws.auth(input);
-    match (expect, actual) {
+    match (&expect, &actual) {
         (Ok(expect), Ok(actual)) => {
             assert_eq!(expect, actual);
-            assert_eq!(expect, aws.get_active_context().unwrap())
+            assert_eq!(expect, &aws.get_active_context().unwrap())
         }
         (Err(expect), Err(actual)) => match (&expect, &actual) {
             (
@@ -63,7 +73,10 @@ fn test_aws_auth(
             }
             _ => panic!("unexpected error: {}", actual),
         },
-        _ => panic!("expect and actual are not match"),
+        _ => panic!(
+            "expect and actual are not match: expect: {:?}, actual: {:?}",
+            &expect, &actual
+        ),
     }
 }
 
