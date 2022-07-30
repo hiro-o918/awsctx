@@ -190,11 +190,7 @@ fn parse_aws_credentials(file: &File) -> Result<CredentialData, ctx::CTXError> {
         .context("failed to deserialize credentials".to_string())
         .map_or_else(
             |e| Err(ctx::CTXError::CredentialsIsBroken { source: Some(e) }),
-            |h| {
-                Ok(h.into_iter()
-                    .map(|(k, v)| (k.to_string(), Rc::new(v)))
-                    .collect())
-            },
+            |h| Ok(h.into_iter().map(|(k, v)| (k, Rc::new(v))).collect()),
         )
 }
 
