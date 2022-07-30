@@ -217,7 +217,6 @@ auth_commands:
 #   bar: |
 #     # In this case, name of one-login configuration is same as `profile`
 #     onelogin-aws-login -C {{profile}} --profile {{profile}} -u user@example.com
----
 auth_commands: {}
 "#;
         let actual = fs::read_to_string(tmpfile).unwrap();
