@@ -8,7 +8,7 @@ use std::process::Command;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use handlebars::Handlebars;
 use once_cell::sync::Lazy;
 use serde_json::json;
@@ -80,11 +80,11 @@ impl<P: AsRef<Path>> ctx::CTX for AWS<'_, P> {
 
     fn list_contexts(&self) -> Result<Vec<ctx::Context>, ctx::CTXError> {
         let creds = Credentials::load_credentials(&self.credentials_path)?;
-        let profiles = creds.list_profiles();
-        Ok(profiles
+        Ok(creds
+            .list_profiles()
             .into_iter()
             .map(|p| ctx::Context {
-                name: p.name,
+                name: p.name.to_string(),
                 active: p.default,
             })
             .collect())
@@ -93,7 +93,7 @@ impl<P: AsRef<Path>> ctx::CTX for AWS<'_, P> {
     fn get_active_context(&self) -> Result<ctx::Context, ctx::CTXError> {
         let creds = Credentials::load_credentials(&self.credentials_path)?;
         creds.get_default_profile().map(|p| ctx::Context {
-            name: p.name,
+            name: p.name.to_string(),
             active: p.default,
         })
     }
@@ -103,7 +103,7 @@ impl<P: AsRef<Path>> ctx::CTX for AWS<'_, P> {
         let profile = creds.set_default_profile(name)?;
         creds.dump_credentials(&self.credentials_path)?;
         Ok(ctx::Context {
-            name: profile.name,
+            name: profile.name.to_string(),
             active: profile.default,
         })
     }
@@ -112,14 +112,16 @@ impl<P: AsRef<Path>> ctx::CTX for AWS<'_, P> {
         &self,
         skim_options: SkimOptions,
     ) -> Result<ctx::Context, ctx::CTXError> {
-        let mut contexts = self.list_contexts()?;
-        // skim shows reverse order
-        contexts.reverse();
         let (tx_item, rx_item): (SkimItemSender, SkimItemReceiver) = unbounded();
-        for context in contexts {
-            let _ = tx_item.send(Arc::new(context));
+        // skim shows reverse order
+        for context in self.list_contexts()?.into_iter().rev() {
+            tx_item
+                .send(Arc::new(context))
+                .context("failed to send an item to skim")
+                .map_err(|e| ctx::CTXError::UnexpectedError { source: Some(e) })?;
         }
         drop(tx_item);
+
         let selected_items = Skim::run_with(&skim_options, Some(rx_item))
             .map(|out| match out.final_key {
                 Key::Enter => Ok(out.selected_items),
@@ -129,13 +131,11 @@ impl<P: AsRef<Path>> ctx::CTX for AWS<'_, P> {
         let item = selected_items
             .get(0)
             .ok_or(ctx::CTXError::NoContextIsSelected { source: None })?;
-        let context = (*item)
-            .as_any()
-            .downcast_ref::<ctx::Context>()
-            .cloned()
-            .ok_or(ctx::CTXError::UnexpectedError {
+        let context = (*item).as_any().downcast_ref::<ctx::Context>().ok_or(
+            ctx::CTXError::UnexpectedError {
                 source: Some(anyhow!("unexpected error")),
-            })?;
+            },
+        )?;
         self.use_context(&context.name)
     }
 }

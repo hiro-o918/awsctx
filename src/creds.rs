@@ -9,24 +9,27 @@ use std::fs::File;
 use std::io::{BufReader, Write};
 use std::io::{BufWriter, Read};
 use std::path::Path;
+use std::rc::Rc;
 
 use anyhow::{anyhow, Context, Result};
 use config;
 use ini::Ini;
 
-const DEFAULT_PROFILE_NAME_KEY: &str = "default";
+const DEFAULT_PROFILE_NAME: &str = "default";
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct Profile {
     pub name: String,
     pub default: bool,
     #[allow(dead_code)]
-    items: HashMap<String, String>,
+    items: Rc<HashMap<String, String>>,
 }
+
+type CredentialData = HashMap<String, Rc<HashMap<String, String>>>;
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct Credentials {
-    data: HashMap<String, HashMap<String, String>>,
+    data: CredentialData,
     default_profile_name: Option<String>,
 }
 
@@ -51,7 +54,7 @@ impl fmt::Display for Credentials {
 
         // write default profile to section first to write last
         if let Some(default_profile_name) = &self.default_profile_name {
-            let mut sec = conf.with_section(Some(DEFAULT_PROFILE_NAME_KEY));
+            let mut sec = conf.with_section(Some(DEFAULT_PROFILE_NAME));
             // NOTE: to use method chain of `&mut SectionSetter`, declare `s` before
             let mut s = sec.borrow_mut();
             let data = self.data.get(default_profile_name).unwrap();
@@ -82,12 +85,19 @@ impl Credentials {
         let mut data = parse_aws_credentials(&file)?;
         let ck = find_default_from_parsed_aws_credentials(&data);
         // remove DEFAULT_KEY after retrain current key
-        data.remove(DEFAULT_PROFILE_NAME_KEY);
+        data.remove(DEFAULT_PROFILE_NAME);
 
         Ok(Credentials {
             data,
             default_profile_name: ck,
         })
+    }
+
+    fn is_default_profile(&self, name: &str) -> bool {
+        self.default_profile_name
+            .as_ref()
+            .map(|n| n.as_str() == name)
+            .unwrap_or_default()
     }
 
     pub fn get_profile(&self, name: &str) -> Result<Profile, ctx::CTXError> {
@@ -98,7 +108,7 @@ impl Credentials {
         Ok(Profile {
             name: name.into(),
             items: items.clone(),
-            default: Some(name.to_string()) == self.default_profile_name,
+            default: self.is_default_profile(name),
         })
     }
 
@@ -148,10 +158,10 @@ impl Credentials {
         let mut profiles = self
             .data
             .iter()
-            .map(|(key, items)| Profile {
-                name: key.to_string(),
+            .map(|(name, items)| Profile {
+                name: name.to_string(),
                 items: items.clone(),
-                default: Some(key) == self.default_profile_name.as_ref(),
+                default: self.is_default_profile(name),
             })
             .collect::<Vec<Profile>>();
         profiles.sort_by(|a, b| a.name.cmp(&b.name));
@@ -159,9 +169,7 @@ impl Credentials {
     }
 }
 
-fn parse_aws_credentials(
-    file: &File,
-) -> Result<HashMap<String, HashMap<String, String>>, ctx::CTXError> {
+fn parse_aws_credentials(file: &File) -> Result<CredentialData, ctx::CTXError> {
     let mut buf_reader = BufReader::new(file);
     let mut contents = String::new();
     buf_reader
@@ -177,21 +185,27 @@ fn parse_aws_credentials(
         .build()
         .context("failed to load aws credentials".to_string())
         .map_err(|e| ctx::CTXError::CredentialsIsBroken { source: Some(e) })?;
-    c.try_deserialize()
+
+    c.try_deserialize::<HashMap<String, HashMap<String, String>>>()
         .context("failed to deserialize credentials".to_string())
-        .map_err(|e| ctx::CTXError::CredentialsIsBroken { source: Some(e) })
+        .map_or_else(
+            |e| Err(ctx::CTXError::CredentialsIsBroken { source: Some(e) }),
+            |h| {
+                Ok(h.into_iter()
+                    .map(|(k, v)| (k.to_string(), Rc::new(v)))
+                    .collect())
+            },
+        )
 }
 
-fn find_default_from_parsed_aws_credentials(
-    data: &HashMap<String, HashMap<String, String>>,
-) -> Option<String> {
-    let default_items = data.get(DEFAULT_PROFILE_NAME_KEY)?;
-    for (key, item) in data {
-        if key == DEFAULT_PROFILE_NAME_KEY {
+fn find_default_from_parsed_aws_credentials(data: &CredentialData) -> Option<String> {
+    let default_items = data.get(DEFAULT_PROFILE_NAME)?;
+    for (name, item) in data {
+        if name == DEFAULT_PROFILE_NAME {
             continue;
         }
-        if item.clone() == default_items.clone() {
-            return Some(key.into());
+        if item == default_items {
+            return Some(name.into());
         }
     }
     None
@@ -201,6 +215,7 @@ fn find_default_from_parsed_aws_credentials(
 mod tests {
     use std::io::{Seek, SeekFrom};
 
+    use maplit::hashmap;
     use rstest::*;
     use tempfile::NamedTempFile;
 
@@ -251,51 +266,35 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     }
 
     #[fixture(aws_credentials = aws_credentials(aws_credentials_text()))]
-    pub fn parsed_aws_credentials(
-        aws_credentials: NamedTempFile,
-    ) -> HashMap<String, HashMap<String, String>> {
+    pub fn parsed_aws_credentials(aws_credentials: NamedTempFile) -> CredentialData {
         parse_aws_credentials(aws_credentials.as_file()).unwrap()
+    }
+
+    #[fixture]
+    pub fn foo_profile_items() -> Rc<HashMap<String, String>> {
+        Rc::new(hashmap! {
+            "aws_access_key_id".to_string() => "XXXXXXXXXXX".to_string(),
+            "aws_secret_access_key".to_string() => "XXXXXXXXXXX".to_string(),
+            "aws_session_token".to_string() => "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string(),
+        })
+    }
+
+    #[fixture]
+    pub fn bar_profile_items() -> Rc<HashMap<String, String>> {
+        Rc::new(hashmap! {
+            "aws_access_key_id".to_string() => "YYYYYYYYYYY".to_string(),
+            "aws_secret_access_key".to_string() => "YYYYYYYYYYY".to_string(),
+            "aws_session_token".to_string() => "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string(),
+        })
     }
 
     #[fixture]
     pub fn credentials() -> Credentials {
         Credentials {
-            data: vec![
-                (
-                    "foo".to_string(),
-                    vec![
-                        ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                        (
-                            "aws_secret_access_key".to_string(),
-                            "XXXXXXXXXXX".to_string(),
-                        ),
-                        (
-                            "aws_session_token".to_string(),
-                            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string(),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect::<HashMap<String, String>>(),
-                ),
-                (
-                    "bar".to_string(),
-                    vec![
-                        ("aws_access_key_id".to_string(), "YYYYYYYYYYY".to_string()),
-                        (
-                            "aws_secret_access_key".to_string(),
-                            "YYYYYYYYYYY".to_string(),
-                        ),
-                        (
-                            "aws_session_token".to_string(),
-                            "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string(),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect::<HashMap<String, String>>(),
-                ),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, HashMap<String, String>>>(),
+            data: hashmap! {
+                    "foo".to_string() => foo_profile_items(),
+                    "bar".to_string() => bar_profile_items(),
+            },
             default_profile_name: Some("foo".to_string()),
         }
     }
@@ -303,101 +302,21 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     #[fixture]
     pub fn credentials_without_default() -> Credentials {
         Credentials {
-            data: vec![
-                (
-                    "foo".to_string(),
-                    vec![
-                        ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                        (
-                            "aws_secret_access_key".to_string(),
-                            "XXXXXXXXXXX".to_string(),
-                        ),
-                        (
-                            "aws_session_token".to_string(),
-                            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string(),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect::<HashMap<String, String>>(),
-                ),
-                (
-                    "bar".to_string(),
-                    vec![
-                        ("aws_access_key_id".to_string(), "YYYYYYYYYYY".to_string()),
-                        (
-                            "aws_secret_access_key".to_string(),
-                            "YYYYYYYYYYY".to_string(),
-                        ),
-                        (
-                            "aws_session_token".to_string(),
-                            "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string(),
-                        ),
-                    ]
-                    .into_iter()
-                    .collect::<HashMap<String, String>>(),
-                ),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, HashMap<String, String>>>(),
+            data: hashmap! {
+                    "foo".to_string() => foo_profile_items(),
+                    "bar".to_string() => bar_profile_items(),
+            },
             default_profile_name: None,
         }
     }
 
     #[rstest]
     fn test_parse_aws_credentials(aws_credentials: NamedTempFile) {
-        let expect = vec![
-            (
-                "foo".to_string(),
-                vec![
-                    ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                    (
-                        "aws_secret_access_key".to_string(),
-                        "XXXXXXXXXXX".to_string(),
-                    ),
-                    (
-                        "aws_session_token".to_string(),
-                        "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect::<HashMap<String, String>>(),
-            ),
-            (
-                "bar".to_string(),
-                vec![
-                    ("aws_access_key_id".to_string(), "YYYYYYYYYYY".to_string()),
-                    (
-                        "aws_secret_access_key".to_string(),
-                        "YYYYYYYYYYY".to_string(),
-                    ),
-                    (
-                        "aws_session_token".to_string(),
-                        "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect::<HashMap<String, String>>(),
-            ),
-            (
-                "default".to_string(),
-                vec![
-                    ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                    (
-                        "aws_secret_access_key".to_string(),
-                        "XXXXXXXXXXX".to_string(),
-                    ),
-                    (
-                        "aws_session_token".to_string(),
-                        "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect::<HashMap<String, String>>(),
-            ),
-        ]
-        .into_iter()
-        .collect::<HashMap<String, HashMap<String, String>>>();
-
+        let expect = hashmap! {
+            "foo".to_string() => foo_profile_items(),
+            "bar".to_string() => bar_profile_items(),
+            "default".to_string() => foo_profile_items(),
+        };
         let actual = parse_aws_credentials(aws_credentials.as_file()).unwrap();
         assert_eq!(expect, actual);
     }
@@ -412,7 +331,7 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         None
     )]
     fn test_find_default_from_parsed_aws_credentials(
-        #[case] parsed_aws_credentials: HashMap<String, HashMap<String, String>>,
+        #[case] parsed_aws_credentials: CredentialData,
         #[case] expect: Option<String>,
     ) {
         let actual = find_default_from_parsed_aws_credentials(&parsed_aws_credentials);
@@ -436,31 +355,19 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
     #[rstest(::trace)]
     #[case(
-        "foo", 
+        "foo",
         Ok(Profile {
-            name: "foo".to_string(), 
+            name: "foo".to_string(),
             default: true,
-            items: vec![
-                ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                ("aws_secret_access_key".to_string(), "XXXXXXXXXXX".to_string()),
-                ("aws_session_token".to_string(), "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string()),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, String>>()
+items: foo_profile_items(),
         })
     )]
     #[case(
-        "bar", 
+        "bar",
         Ok(Profile {
-            name: "bar".to_string(), 
+            name: "bar".to_string(),
             default: false,
-            items: vec![
-                ("aws_access_key_id".to_string(), "YYYYYYYYYYY".to_string()),
-                ("aws_secret_access_key".to_string(), "YYYYYYYYYYY".to_string()),
-                ("aws_session_token".to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string()),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, String>>()
+            items: bar_profile_items(),
         })
     )]
     #[case("unknown", Err(ctx::CTXError::NoSuchProfile {
@@ -498,15 +405,9 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     #[case(
         credentials(),
         Ok(Profile {
-            name: "foo".to_string(), 
+            name: "foo".to_string(),
             default: true,
-            items: vec![
-                ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                ("aws_secret_access_key".to_string(), "XXXXXXXXXXX".to_string()),
-                ("aws_session_token".to_string(), "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string()),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, String>>()
+items: foo_profile_items(),
         })
     )]
     #[case(credentials_without_default(), Err(ctx::CTXError::NoActiveContext { source: None }))]
@@ -534,31 +435,19 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
     #[rstest(::trace)]
     #[case(
-        "foo", 
+        "foo",
         Ok(Profile {
-            name: "foo".to_string(), 
+            name: "foo".to_string(),
             default: true,
-            items: vec![
-                ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                ("aws_secret_access_key".to_string(), "XXXXXXXXXXX".to_string()),
-                ("aws_session_token".to_string(), "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string()),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, String>>()
+items: foo_profile_items(),
         })
     )]
     #[case(
-        "bar", 
+        "bar",
         Ok(Profile {
-            name: "bar".to_string(), 
+            name: "bar".to_string(),
             default: true,
-            items: vec![
-                ("aws_access_key_id".to_string(), "YYYYYYYYYYY".to_string()),
-                ("aws_secret_access_key".to_string(), "YYYYYYYYYYY".to_string()),
-                ("aws_session_token".to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string()),
-            ]
-            .into_iter()
-            .collect::<HashMap<String, String>>()
+            items: bar_profile_items(),
         })
     )]
     #[case("unknown", Err(ctx::CTXError::NoSuchProfile {
@@ -617,36 +506,12 @@ aws_session_token=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
             Profile {
                 name: "bar".to_string(),
                 default: false,
-                items: vec![
-                    ("aws_access_key_id".to_string(), "YYYYYYYYYYY".to_string()),
-                    (
-                        "aws_secret_access_key".to_string(),
-                        "YYYYYYYYYYY".to_string(),
-                    ),
-                    (
-                        "aws_session_token".to_string(),
-                        "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect::<HashMap<String, String>>(),
+                items: bar_profile_items(),
             },
             Profile {
                 name: "foo".to_string(),
                 default: true,
-                items: vec![
-                    ("aws_access_key_id".to_string(), "XXXXXXXXXXX".to_string()),
-                    (
-                        "aws_secret_access_key".to_string(),
-                        "XXXXXXXXXXX".to_string(),
-                    ),
-                    (
-                        "aws_session_token".to_string(),
-                        "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect::<HashMap<String, String>>(),
+                items: foo_profile_items(),
             },
         ];
 
