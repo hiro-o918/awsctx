@@ -1,6 +1,5 @@
-use std::borrow::Cow;
-
-use skim::{SkimItem, SkimOptions};
+use anyhow::Result;
+use skim::SkimOptions;
 use thiserror::Error;
 
 pub trait CTX {
@@ -42,14 +41,14 @@ pub enum CTXError {
     UnexpectedError { source: Option<anyhow::Error> },
 }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct Context {
     pub name: String,
     pub active: bool,
 }
 
-impl SkimItem for Context {
-    fn text(&self) -> Cow<str> {
-        Cow::Borrowed(&self.name)
+impl AsRef<str> for Context {
+    fn as_ref(&self) -> &str {
+        &self.name
     }
 }
