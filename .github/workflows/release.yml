@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - name: Compile and release
         uses: rust-build/rust-build.action@latest
